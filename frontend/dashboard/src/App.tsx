@@ -436,7 +436,7 @@ function App() {
             <h1>Delivery Overview</h1>
             <p>Track webhook traffic, retries, and endpoint health.</p>
           </div>
-          <button type="button" onClick={loadDashboard} disabled={loading}>
+          <button type="button" onClick={() => void loadDashboard()} disabled={loading}>
             <RefreshCcw size={16} aria-hidden="true" />
             Refresh
           </button>
