@@ -30,11 +30,11 @@ public class RetryScheduler {
     }
 
     public void scheduleIfNeeded(DeliveryJob job) {
-        int nextAttempt = job.attemptNumber() + 1;
-        if (nextAttempt > maxAttempts) {
+        if (isExhausted(job)) {
             return;
         }
 
+        int nextAttempt = job.attemptNumber() + 1;
         Duration backoff = BACKOFFS.get(Math.min(job.attemptNumber() - 1, BACKOFFS.size() - 1));
         DeliveryJob retryJob = new DeliveryJob(
                 job.eventId(),
@@ -48,5 +48,9 @@ public class RetryScheduler {
                 Instant.now()
         );
         retryQueueRepository.save(new RetryQueueEntry(retryJob, Instant.now().plus(backoff)));
+    }
+
+    public boolean isExhausted(DeliveryJob job) {
+        return job.attemptNumber() >= maxAttempts;
     }
 }

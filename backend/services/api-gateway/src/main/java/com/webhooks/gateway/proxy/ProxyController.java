@@ -39,6 +39,9 @@ public class ProxyController {
         if (path.matches("^/tenants/[^/]+/attempts.*$")) {
             return proxy(routes.delivery().baseUrl(), request, body);
         }
+        if (path.matches("^/tenants/[^/]+/dead-lettered-events.*$")) {
+            return proxy(routes.delivery().baseUrl(), request, body);
+        }
         if (path.matches("^/tenants/[^/]+/retries.*$")) {
             return proxy(routes.scheduler().baseUrl(), request, body);
         }
