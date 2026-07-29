@@ -4,42 +4,72 @@ A microservices-based webhook delivery platform built with Java/Spring Boot, Pos
 
 ## Services
 
-- `backend/services/api-gateway`: external API entry point and routing layer.
-- `backend/services/event-ingestion-service`: validates incoming events, stores payloads, and publishes delivery jobs.
-- `backend/services/webhook-management-service`: tenant-scoped webhook endpoint and subscription management.
-- `backend/services/delivery-service`: consumes webhook delivery jobs from Kafka and performs outbound HTTP delivery.
-- `backend/services/scheduler-service`: moves due retries from PostgreSQL into Kafka.
-- `frontend/dashboard`: React UI for observing endpoints, events, attempts, and delivery health.
+- `backend/services/api-gateway`: external API entry point, tenant API key authentication, admin bootstrap auth, CORS, rate limiting, and service routing.
+- `backend/services/webhook-management-service`: tenant, API key, webhook endpoint, and subscription management.
+- `backend/services/event-ingestion-service`: validates incoming events, stores payloads, handles idempotency, and publishes delivery jobs.
+- `backend/services/delivery-service`: consumes delivery jobs, signs outbound webhook requests, records attempts, schedules retries, and dead-letters exhausted events.
+- `backend/services/scheduler-service`: republishes due retry jobs from PostgreSQL into Kafka.
+- `frontend/dashboard`: React dashboard for managing endpoints/subscriptions, ingesting test events, and inspecting attempts/retries/dead letters.
 
-## Local Infrastructure
+## Local Stack
 
-The local stack includes:
-
-- PostgreSQL for durable webhook configuration, events, and attempts.
-- Redis for rate limiting, idempotency windows, and short-lived coordination.
-- Kafka for asynchronous delivery and retry dispatch.
-- Flyway for repeatable database migrations.
-
-## Getting Started
+The Docker stack includes PostgreSQL, Flyway, Redis, Kafka, all backend services, and the dashboard.
 
 ```powershell
 docker compose up -d
 ```
 
-After the stack is healthy, run a smoke test:
+Default URLs:
+
+- Dashboard: `http://localhost:3000`
+- API gateway: `http://localhost:8080`
+- Webhook management service: `http://localhost:8083`
+- Event ingestion service: `http://localhost:8084`
+- Delivery service: `http://localhost:8081`
+- Scheduler service: `http://localhost:8082`
+
+Local defaults are embedded in `docker-compose.yml`. To customize ports, database credentials, admin key, or rate limits:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+## Smoke Test
+
+After the stack is healthy, run:
 
 ```powershell
 node scripts/smoke-test.mjs
 ```
 
-After installing Java 21 and Maven, run an individual service:
+Optional environment overrides:
 
 ```powershell
-cd backend/services/api-gateway
-mvn spring-boot:run
+$env:API_BASE_URL="http://localhost:8080"
+$env:ADMIN_API_KEY="local-admin-key"
+$env:WEBHOOK_URL="https://example.com/webhooks"
+node scripts/smoke-test.mjs
 ```
 
-For the dashboard:
+The smoke test creates a tenant, API key, endpoint, subscription, ingests an event, and verifies the created resources can be read back through the gateway.
+
+## Local Development
+
+Backend tests:
+
+```powershell
+cd backend/services
+mvn test
+```
+
+Run one Spring service locally:
+
+```powershell
+cd backend/services
+mvn -pl api-gateway spring-boot:run
+```
+
+Dashboard development server:
 
 ```powershell
 cd frontend/dashboard
@@ -47,13 +77,16 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-## Commit Plan
+Dashboard production build:
 
-Recommended initial milestones:
+```powershell
+cd frontend/dashboard
+npm.cmd run build
+```
 
-1. Scaffold repository and local infrastructure.
-2. Implement endpoint registration and event ingestion.
-3. Publish delivery jobs to Kafka.
-4. Implement delivery worker with retries and attempt tracking.
-5. Add dashboard views for events and attempts.
-6. Add auth, tenant isolation, rate limits, and observability.
+## CI
+
+GitHub Actions runs on pushes to `main` and pull requests:
+
+- Backend: Java 21 and `mvn test`
+- Frontend: Node 20, `npm ci`, and `npm run build`
