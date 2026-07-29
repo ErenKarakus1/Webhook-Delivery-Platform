@@ -1,6 +1,7 @@
 package com.webhooks.gateway.proxy;
 
 import jakarta.servlet.http.HttpServletRequest;
+import com.webhooks.gateway.observability.RequestIdFilter;
 import java.net.URI;
 import java.util.Collections;
 import org.springframework.http.HttpHeaders;
@@ -62,6 +63,10 @@ public class ProxyController {
         Collections.list(request.getHeaderNames()).stream()
                 .filter(headerName -> !headerName.equalsIgnoreCase(HttpHeaders.HOST))
                 .forEach(headerName -> headers.put(headerName, Collections.list(request.getHeaders(headerName))));
+        Object requestId = request.getAttribute(RequestIdFilter.REQUEST_ID_ATTRIBUTE);
+        if (requestId != null) {
+            headers.set(RequestIdFilter.REQUEST_ID_HEADER, requestId.toString());
+        }
     }
 
     private String queryString(HttpServletRequest request) {
