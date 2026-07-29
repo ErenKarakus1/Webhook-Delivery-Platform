@@ -4,11 +4,12 @@ A microservices-based webhook delivery platform built with Java/Spring Boot, Pos
 
 ## Services
 
-- `api-gateway`: external API entry point for tenants, endpoints, and event ingestion.
-- `webhook-management-service`: tenant-scoped webhook endpoint and subscription management.
-- `delivery-service`: consumes webhook delivery jobs from Kafka and performs outbound HTTP delivery.
-- `scheduler-service`: moves due retries from PostgreSQL into Kafka.
-- `dashboard`: React UI for observing endpoints, events, attempts, and delivery health.
+- `backend/services/api-gateway`: external API entry point and routing layer.
+- `backend/services/event-ingestion-service`: validates incoming events, stores payloads, and publishes delivery jobs.
+- `backend/services/webhook-management-service`: tenant-scoped webhook endpoint and subscription management.
+- `backend/services/delivery-service`: consumes webhook delivery jobs from Kafka and performs outbound HTTP delivery.
+- `backend/services/scheduler-service`: moves due retries from PostgreSQL into Kafka.
+- `frontend/dashboard`: React UI for observing endpoints, events, attempts, and delivery health.
 
 ## Local Infrastructure
 
@@ -27,14 +28,14 @@ docker compose up -d
 After installing Java 21 and Maven, run a service:
 
 ```powershell
-cd services/api-gateway
+cd backend/services/api-gateway
 mvn spring-boot:run
 ```
 
 For the dashboard:
 
 ```powershell
-cd apps/dashboard
+cd frontend/dashboard
 npm.cmd install
 npm.cmd run dev
 ```

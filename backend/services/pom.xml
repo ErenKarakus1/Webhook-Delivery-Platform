@@ -10,6 +10,7 @@
 
     <modules>
         <module>api-gateway</module>
+        <module>event-ingestion-service</module>
         <module>webhook-management-service</module>
         <module>delivery-service</module>
         <module>scheduler-service</module>
