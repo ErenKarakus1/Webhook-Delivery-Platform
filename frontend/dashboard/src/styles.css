@@ -246,6 +246,40 @@ h1 {
   display: grid;
 }
 
+.panel-search {
+  align-items: center;
+  border-bottom: 1px solid #edf1f5;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 14px 20px;
+}
+
+.panel-search svg {
+  color: #667085;
+}
+
+.segmented {
+  border-bottom: 1px solid #edf1f5;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 14px 20px;
+}
+
+.segmented button {
+  background: #eef2f7;
+  color: #344054;
+  font-size: 14px;
+  min-height: 34px;
+  padding: 0 10px;
+}
+
+.segmented button.selected {
+  background: #17202a;
+  color: white;
+}
+
 .row {
   align-items: center;
   border-bottom: 1px solid #edf1f5;
@@ -481,6 +515,7 @@ time {
   .row.endpoint-row,
   .inline-create,
   .event-create .inline-create,
+  .segmented,
   .timeline-item {
     grid-template-columns: 1fr;
   }

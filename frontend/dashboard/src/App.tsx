@@ -1,5 +1,5 @@
 import React, { FormEvent, useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, Bell, Clock, Power, RefreshCcw, Server, Trash2 } from "lucide-react";
+import { Activity, AlertTriangle, Bell, Clock, Power, RefreshCcw, Search, Server, Trash2 } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -82,6 +82,8 @@ function App() {
   const [eventType, setEventType] = useState("order.created");
   const [eventPayload, setEventPayload] = useState('{\n  "orderId": "ord_123",\n  "total": 49.99\n}');
   const [idempotencyKey, setIdempotencyKey] = useState("");
+  const [eventSearch, setEventSearch] = useState("");
+  const [attemptFilter, setAttemptFilter] = useState<"all" | "delivered" | "failed" | "retrying">("all");
   const [loading, setLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [endpointLoading, setEndpointLoading] = useState(false);
@@ -105,6 +107,27 @@ function App() {
       { label: "Subscriptions", value: subscriptions.filter((subscription) => subscription.active).length.toString(), icon: Power },
     ];
   }, [attempts, deadLetteredEvents, endpoints, events, retries, subscriptions]);
+
+  const visibleEvents = useMemo(() => {
+    const query = eventSearch.trim().toLowerCase();
+    if (!query) {
+      return events.slice(0, 8);
+    }
+    return events
+      .filter((event) => event.eventType.toLowerCase().includes(query) || event.id.toLowerCase().includes(query))
+      .slice(0, 8);
+  }, [eventSearch, events]);
+
+  const visibleAttempts = useMemo(() => {
+    return attempts
+      .filter((attempt) => {
+        if (attemptFilter === "all") {
+          return true;
+        }
+        return attemptStatus(attempt).toLowerCase() === attemptFilter;
+      })
+      .slice(0, 8);
+  }, [attemptFilter, attempts]);
 
   useEffect(() => {
     localStorage.setItem("tenantId", tenantId);
@@ -451,6 +474,15 @@ function App() {
 
         <section className="grid">
           <DataPanel title="Recent events" empty="No events yet.">
+            <label className="panel-search">
+              <Search size={16} aria-hidden="true" />
+              <input
+                aria-label="Search events"
+                placeholder="Search event type or ID"
+                value={eventSearch}
+                onChange={(event) => setEventSearch(event.target.value)}
+              />
+            </label>
             <form className="event-create" onSubmit={ingestEvent}>
               <div className="inline-create">
                 <input
@@ -476,7 +508,7 @@ function App() {
                 <button type="submit" disabled={eventLoading}>Ingest event</button>
               </div>
             </form>
-            {events.slice(0, 5).map((event) => (
+            {visibleEvents.map((event) => (
               <button
                 className={`row row-button ${selectedEvent?.id === event.id ? "selected" : ""}`}
                 key={event.id}
@@ -493,7 +525,19 @@ function App() {
           </DataPanel>
 
           <DataPanel title="Recent attempts" empty="No attempts yet.">
-            {attempts.slice(0, 5).map((attempt) => (
+            <div className="segmented" aria-label="Filter attempts">
+              {(["all", "delivered", "failed", "retrying"] as const).map((filter) => (
+                <button
+                  className={attemptFilter === filter ? "selected" : ""}
+                  key={filter}
+                  onClick={() => setAttemptFilter(filter)}
+                  type="button"
+                >
+                  {capitalize(filter)}
+                </button>
+              ))}
+            </div>
+            {visibleAttempts.map((attempt) => (
               <article className="row attempt" key={attempt.id}>
                 <div>
                   <strong>Attempt {attempt.attemptNumber}</strong>
@@ -711,6 +755,10 @@ function attemptStatus(attempt: Attempt) {
     return "Failed";
   }
   return "Retrying";
+}
+
+function capitalize(value: string) {
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
 
 function endpointLabel(endpointId: string, endpoints: Endpoint[]) {
