@@ -18,15 +18,34 @@ a {
 }
 
 button {
+  align-items: center;
   border: 0;
   border-radius: 6px;
   background: #1d4ed8;
   color: white;
   cursor: pointer;
+  display: inline-flex;
+  gap: 8px;
   font: inherit;
   font-weight: 700;
+  justify-content: center;
   min-height: 40px;
   padding: 0 16px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+input {
+  border: 1px solid #cdd5df;
+  border-radius: 6px;
+  color: #17202a;
+  font: inherit;
+  min-height: 40px;
+  padding: 8px 10px;
+  width: 100%;
 }
 
 .app {
@@ -99,6 +118,40 @@ h1 {
   margin-bottom: 24px;
 }
 
+.credentials {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto;
+  margin-bottom: 20px;
+}
+
+.credentials label {
+  display: grid;
+  gap: 6px;
+}
+
+.credentials label span {
+  color: #667085;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.error {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #991b1b;
+  margin-bottom: 20px;
+  padding: 12px 14px;
+}
+
+.grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .stat,
 .panel {
   background: white;
@@ -142,34 +195,43 @@ h1 {
   font-size: 14px;
 }
 
-.attempt-list {
+.list {
   display: grid;
 }
 
-.attempt {
+.row {
   align-items: center;
   border-bottom: 1px solid #edf1f5;
   display: grid;
   gap: 16px;
-  grid-template-columns: 1fr 120px 90px;
+  grid-template-columns: minmax(0, 1fr) auto;
   padding: 16px 20px;
 }
 
-.attempt:last-child {
+.row.attempt {
+  grid-template-columns: minmax(0, 1fr) 110px 90px;
+}
+
+.row:last-child {
   border-bottom: 0;
 }
 
-.attempt div {
+.row div {
   display: grid;
   gap: 4px;
   min-width: 0;
 }
 
-.attempt div span {
+.row div span {
   color: #667085;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.empty {
+  color: #667085;
+  padding: 18px 20px;
 }
 
 .status {
@@ -226,11 +288,17 @@ time {
   .stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .credentials,
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 560px) {
   .stats,
-  .attempt {
+  .row,
+  .row.attempt {
     grid-template-columns: 1fr;
   }
 }
