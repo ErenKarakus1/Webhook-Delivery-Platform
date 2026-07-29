@@ -53,6 +53,19 @@ node scripts/smoke-test.mjs
 
 The smoke test creates a tenant, API key, endpoint, subscription, ingests an event, and verifies the created resources can be read back through the gateway.
 
+## Demo Data
+
+To load a repeatable local demo tenant and sample delivery records:
+
+```powershell
+docker compose --profile seed up seed-demo
+```
+
+Demo dashboard credentials:
+
+- Tenant ID: `11111111-1111-1111-1111-111111111111`
+- API key: `demo-api-key`
+
 ## Local Development
 
 Backend tests:

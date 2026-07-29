@@ -28,6 +28,23 @@ services:
       FLYWAY_USER: ${POSTGRES_USER:-webhook}
       FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:-webhook}
 
+  seed-demo:
+    image: postgres:16-alpine
+    profiles:
+      - seed
+    depends_on:
+      postgres:
+        condition: service_healthy
+      flyway:
+        condition: service_completed_successfully
+    volumes:
+      - ./backend/database/seeds:/seeds:ro
+    environment:
+      PGDATABASE: ${POSTGRES_DB:-webhook_platform}
+      PGUSER: ${POSTGRES_USER:-webhook}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-webhook}
+    command: ["psql", "-h", "postgres", "-f", "/seeds/demo.sql"]
+
   redis:
     image: redis:7-alpine
     ports:
