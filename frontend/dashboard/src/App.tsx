@@ -48,6 +48,15 @@ type DeadLetteredEvent = {
   createdAt: string;
 };
 
+type EventIngestionResponse = {
+  eventId: string;
+  tenantId: string;
+  eventType: string;
+  deliveryJobsPublished: number;
+  duplicate: boolean;
+  createdAt: string;
+};
+
 function App() {
   const [tenantId, setTenantId] = useState(() => localStorage.getItem("tenantId") ?? "");
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("apiKey") ?? "");
@@ -59,9 +68,13 @@ function App() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [selectedEventAttempts, setSelectedEventAttempts] = useState<Attempt[]>([]);
   const [endpointUrl, setEndpointUrl] = useState("");
+  const [eventType, setEventType] = useState("order.created");
+  const [eventPayload, setEventPayload] = useState('{\n  "orderId": "ord_123",\n  "total": 49.99\n}');
+  const [idempotencyKey, setIdempotencyKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [endpointLoading, setEndpointLoading] = useState(false);
+  const [eventLoading, setEventLoading] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -173,6 +186,53 @@ function App() {
     }
   }
 
+  async function ingestEvent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!tenantId || !apiKey) {
+      setError("Tenant ID and API key are required.");
+      return;
+    }
+    if (!eventType.trim()) {
+      setError("Event type is required.");
+      return;
+    }
+
+    let payload: unknown;
+    try {
+      payload = JSON.parse(eventPayload);
+    } catch {
+      setError("Event payload must be valid JSON.");
+      return;
+    }
+
+    setEventLoading(true);
+    setError(null);
+
+    try {
+      const headers: Record<string, string> = { "X-API-Key": apiKey };
+      if (idempotencyKey.trim()) {
+        headers["Idempotency-Key"] = idempotencyKey.trim();
+      }
+      const response = await request<EventIngestionResponse>(`/tenants/${tenantId}/events`, headers, {
+        method: "POST",
+        body: JSON.stringify({ eventType: eventType.trim(), payload }),
+      });
+      const createdEvent = {
+        id: response.eventId,
+        eventType: response.eventType,
+        createdAt: response.createdAt,
+      };
+      setEvents((current) => [createdEvent, ...current.filter((item) => item.id !== createdEvent.id)]);
+      setSelectedEvent(createdEvent);
+      setSelectedEventAttempts([]);
+      setIdempotencyKey("");
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Could not ingest event.");
+    } finally {
+      setEventLoading(false);
+    }
+  }
+
   async function createTenantAndApiKey() {
     setSetupLoading(true);
     setError(null);
@@ -254,6 +314,31 @@ function App() {
 
         <section className="grid">
           <DataPanel title="Recent events" empty="No events yet.">
+            <form className="event-create" onSubmit={ingestEvent}>
+              <div className="inline-create">
+                <input
+                  aria-label="Event type"
+                  placeholder="order.created"
+                  value={eventType}
+                  onChange={(event) => setEventType(event.target.value)}
+                />
+                <input
+                  aria-label="Idempotency key"
+                  placeholder="Idempotency key"
+                  value={idempotencyKey}
+                  onChange={(event) => setIdempotencyKey(event.target.value)}
+                />
+              </div>
+              <textarea
+                aria-label="Event JSON payload"
+                value={eventPayload}
+                onChange={(event) => setEventPayload(event.target.value)}
+                spellCheck={false}
+              />
+              <div className="form-actions">
+                <button type="submit" disabled={eventLoading}>Ingest event</button>
+              </div>
+            </form>
             {events.slice(0, 5).map((event) => (
               <button
                 className={`row row-button ${selectedEvent?.id === event.id ? "selected" : ""}`}

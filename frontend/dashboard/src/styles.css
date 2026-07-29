@@ -53,6 +53,17 @@ input {
   width: 100%;
 }
 
+textarea {
+  border: 1px solid #cdd5df;
+  border-radius: 6px;
+  color: #17202a;
+  font: 14px ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  min-height: 120px;
+  padding: 10px;
+  resize: vertical;
+  width: 100%;
+}
+
 .app {
   display: grid;
   grid-template-columns: 240px 1fr;
@@ -227,6 +238,30 @@ h1 {
   gap: 10px;
   grid-template-columns: minmax(0, 1fr) auto;
   padding: 14px 20px;
+}
+
+.event-create {
+  border-bottom: 1px solid #edf1f5;
+  display: grid;
+  gap: 12px;
+  padding-bottom: 14px;
+}
+
+.event-create .inline-create {
+  border-bottom: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  padding-bottom: 0;
+}
+
+.event-create textarea {
+  justify-self: center;
+  max-width: calc(100% - 40px);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 20px;
 }
 
 .row-button {
@@ -408,6 +443,7 @@ time {
   .row,
   .row.attempt,
   .inline-create,
+  .event-create .inline-create,
   .timeline-item {
     grid-template-columns: 1fr;
   }
