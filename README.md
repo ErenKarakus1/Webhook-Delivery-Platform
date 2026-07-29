@@ -26,13 +26,13 @@ The local stack includes:
 docker compose up -d
 ```
 
-Run migrations:
+After the stack is healthy, run a smoke test:
 
 ```powershell
-docker compose run --rm flyway
+node scripts/smoke-test.mjs
 ```
 
-After installing Java 21 and Maven, run a service:
+After installing Java 21 and Maven, run an individual service:
 
 ```powershell
 cd backend/services/api-gateway
