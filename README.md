@@ -32,12 +32,6 @@ Run migrations:
 docker compose run --rm flyway
 ```
 
-Run the backend services with Docker:
-
-```powershell
-docker compose up --build api-gateway event-ingestion-service webhook-management-service delivery-service scheduler-service
-```
-
 After installing Java 21 and Maven, run a service:
 
 ```powershell
