@@ -1,5 +1,5 @@
 import React, { FormEvent, useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, Bell, Clock, RefreshCcw, Server } from "lucide-react";
+import { Activity, AlertTriangle, Bell, Clock, Power, RefreshCcw, Server, Trash2 } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -74,6 +74,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [endpointLoading, setEndpointLoading] = useState(false);
+  const [endpointActionLoading, setEndpointActionLoading] = useState<string | null>(null);
   const [eventLoading, setEventLoading] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -183,6 +184,48 @@ function App() {
       setError(exception instanceof Error ? exception.message : "Could not create endpoint.");
     } finally {
       setEndpointLoading(false);
+    }
+  }
+
+  async function setEndpointActive(endpoint: Endpoint, active: boolean) {
+    if (!tenantId || !apiKey) {
+      setError("Tenant ID and API key are required.");
+      return;
+    }
+
+    setEndpointActionLoading(endpoint.id);
+    setError(null);
+
+    try {
+      const updatedEndpoint = await request<Endpoint>(
+        `/tenants/${tenantId}/endpoints/${endpoint.id}/${active ? "activate" : "deactivate"}`,
+        { "X-API-Key": apiKey },
+        { method: "PATCH" },
+      );
+      setEndpoints((current) => current.map((item) => item.id === updatedEndpoint.id ? updatedEndpoint : item));
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Could not update endpoint.");
+    } finally {
+      setEndpointActionLoading(null);
+    }
+  }
+
+  async function deleteEndpoint(endpointId: string) {
+    if (!tenantId || !apiKey) {
+      setError("Tenant ID and API key are required.");
+      return;
+    }
+
+    setEndpointActionLoading(endpointId);
+    setError(null);
+
+    try {
+      await requestNoContent(`/tenants/${tenantId}/endpoints/${endpointId}`, { "X-API-Key": apiKey }, { method: "DELETE" });
+      setEndpoints((current) => current.filter((endpoint) => endpoint.id !== endpointId));
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Could not delete endpoint.");
+    } finally {
+      setEndpointActionLoading(null);
     }
   }
 
@@ -379,10 +422,30 @@ function App() {
               <button type="submit" disabled={endpointLoading}>Add</button>
             </form>
             {endpoints.slice(0, 5).map((endpoint) => (
-              <article className="row" key={endpoint.id}>
+              <article className="row endpoint-row" key={endpoint.id}>
                 <div>
                   <strong>{endpoint.active ? "Active" : "Inactive"}</strong>
                   <span>{endpoint.url}</span>
+                </div>
+                <div className="row-actions">
+                  <button
+                    aria-label={endpoint.active ? "Deactivate endpoint" : "Activate endpoint"}
+                    className="icon-button"
+                    disabled={endpointActionLoading === endpoint.id}
+                    onClick={() => void setEndpointActive(endpoint, !endpoint.active)}
+                    type="button"
+                  >
+                    <Power size={16} aria-hidden="true" />
+                  </button>
+                  <button
+                    aria-label="Delete endpoint"
+                    className="icon-button danger"
+                    disabled={endpointActionLoading === endpoint.id}
+                    onClick={() => void deleteEndpoint(endpoint.id)}
+                    type="button"
+                  >
+                    <Trash2 size={16} aria-hidden="true" />
+                  </button>
                 </div>
                 <time>{formatDate(endpoint.createdAt)}</time>
               </article>
@@ -479,6 +542,20 @@ async function request<T>(path: string, headers: Record<string, string>, init: R
     throw new Error(`${response.status} ${response.statusText}`);
   }
   return response.json() as Promise<T>;
+}
+
+async function requestNoContent(path: string, headers: Record<string, string>, init: RequestInit & { headers?: Record<string, string> } = {}): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+      ...init.headers,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`${response.status} ${response.statusText}`);
+  }
 }
 
 function attemptStatus(attempt: Attempt) {
