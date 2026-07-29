@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+const ADMIN_API_KEY = import.meta.env.VITE_ADMIN_API_KEY ?? "local-admin-key";
 
 type Endpoint = {
   id: string;
@@ -56,6 +57,7 @@ function App() {
   const [retries, setRetries] = useState<Retry[]>([]);
   const [deadLetteredEvents, setDeadLetteredEvents] = useState<DeadLetteredEvent[]>([]);
   const [loading, setLoading] = useState(false);
+  const [setupLoading, setSetupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const stats = useMemo(() => {
@@ -112,6 +114,29 @@ function App() {
     void loadDashboard();
   }
 
+  async function createTenantAndApiKey() {
+    setSetupLoading(true);
+    setError(null);
+    try {
+      const tenant = await request<{ id: string }>("/tenants", { "X-Admin-Key": ADMIN_API_KEY }, {
+        method: "POST",
+        body: JSON.stringify({ name: "Local tenant" }),
+      });
+      const apiKeyResponse = await request<{ apiKey: string }>(`/tenants/${tenant.id}/api-keys`, {
+        "X-Admin-Key": ADMIN_API_KEY,
+      }, {
+        method: "POST",
+        body: JSON.stringify({ name: "Dashboard local key" }),
+      });
+      setTenantId(tenant.id);
+      setApiKey(apiKeyResponse.apiKey);
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Could not create local tenant.");
+    } finally {
+      setSetupLoading(false);
+    }
+  }
+
   return (
     <main className="app">
       <aside className="sidebar">
@@ -148,6 +173,13 @@ function App() {
           </label>
           <button type="submit" disabled={loading}>Connect</button>
         </form>
+
+        <div className="setup">
+          <span>Need local credentials?</span>
+          <button type="button" className="secondary" onClick={createTenantAndApiKey} disabled={setupLoading}>
+            Create tenant
+          </button>
+        </div>
 
         {error && <div className="error">{error}</div>}
 
@@ -243,8 +275,15 @@ function DataPanel({ children, empty, title }: { children: React.ReactNode; empt
   );
 }
 
-async function request<T>(path: string, headers: Record<string, string>): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+async function request<T>(path: string, headers: Record<string, string>, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+      ...init.headers,
+    },
+  });
   if (!response.ok) {
     throw new Error(`${response.status} ${response.statusText}`);
   }

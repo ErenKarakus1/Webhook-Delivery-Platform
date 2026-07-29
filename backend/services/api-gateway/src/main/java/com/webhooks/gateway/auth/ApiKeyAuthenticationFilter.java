@@ -19,15 +19,18 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     private static final Pattern TENANT_PATH = Pattern.compile("^/tenants/([^/]+)(?:/.*)?$");
 
+    private final AdminAuthProperties adminAuthProperties;
     private final ApiKeyHasher apiKeyHasher;
     private final ApiKeyRepository apiKeyRepository;
     private final RateLimiter rateLimiter;
 
     public ApiKeyAuthenticationFilter(
+            AdminAuthProperties adminAuthProperties,
             ApiKeyHasher apiKeyHasher,
             ApiKeyRepository apiKeyRepository,
             RateLimiter rateLimiter
     ) {
+        this.adminAuthProperties = adminAuthProperties;
         this.apiKeyHasher = apiKeyHasher;
         this.apiKeyRepository = apiKeyRepository;
         this.rateLimiter = rateLimiter;
@@ -40,6 +43,15 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         if (HttpMethod.OPTIONS.matches(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (isAdminRoute(request)) {
+            if (!adminKeyAllowed(request)) {
+                reject(response, HttpStatus.UNAUTHORIZED, "Missing or invalid X-Admin-Key header");
+                return;
+            }
             filterChain.doFilter(request, response);
             return;
         }
@@ -73,6 +85,23 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isAdminRoute(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        if (HttpMethod.POST.matches(request.getMethod()) && "/tenants".equals(path)) {
+            return true;
+        }
+        return HttpMethod.POST.matches(request.getMethod()) && path.matches("^/tenants/[^/]+/api-keys$");
+    }
+
+    private boolean adminKeyAllowed(HttpServletRequest request) {
+        String configuredAdminKey = adminAuthProperties.apiKey();
+        String providedAdminKey = request.getHeader("X-Admin-Key");
+        return configuredAdminKey != null
+                && !configuredAdminKey.isBlank()
+                && providedAdminKey != null
+                && configuredAdminKey.equals(providedAdminKey);
     }
 
     private UUID tenantIdFromPath(String path) {
