@@ -11,6 +11,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
 services:
   webhook-management:
@@ -27,6 +31,8 @@ gateway:
     allowed-origins:
       - http://localhost:5173
       - http://127.0.0.1:5173
+  rate-limit:
+    requests-per-minute: 120
 
 management:
   endpoints:

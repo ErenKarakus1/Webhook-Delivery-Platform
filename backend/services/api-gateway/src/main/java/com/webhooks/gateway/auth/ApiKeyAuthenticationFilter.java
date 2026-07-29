@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import com.webhooks.gateway.ratelimit.RateLimitResult;
+import com.webhooks.gateway.ratelimit.RateLimiter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
@@ -19,10 +21,16 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     private final ApiKeyHasher apiKeyHasher;
     private final ApiKeyRepository apiKeyRepository;
+    private final RateLimiter rateLimiter;
 
-    public ApiKeyAuthenticationFilter(ApiKeyHasher apiKeyHasher, ApiKeyRepository apiKeyRepository) {
+    public ApiKeyAuthenticationFilter(
+            ApiKeyHasher apiKeyHasher,
+            ApiKeyRepository apiKeyRepository,
+            RateLimiter rateLimiter
+    ) {
         this.apiKeyHasher = apiKeyHasher;
         this.apiKeyRepository = apiKeyRepository;
+        this.rateLimiter = rateLimiter;
     }
 
     @Override
@@ -53,6 +61,14 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 .orElse(false);
         if (!allowed) {
             reject(response, HttpStatus.FORBIDDEN, "API key is not valid for this tenant");
+            return;
+        }
+
+        RateLimitResult rateLimit = rateLimiter.check(tenantId);
+        response.setHeader("X-RateLimit-Limit", Long.toString(rateLimit.limit()));
+        response.setHeader("X-RateLimit-Remaining", Long.toString(rateLimit.remaining()));
+        if (!rateLimit.allowed()) {
+            reject(response, HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded");
             return;
         }
 
