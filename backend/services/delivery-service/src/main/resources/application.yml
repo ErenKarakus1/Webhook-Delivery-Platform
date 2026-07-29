@@ -13,6 +13,19 @@ spring:
       ddl-auto: validate
   kafka:
     bootstrap-servers: localhost:9092
+    consumer:
+      group-id: delivery-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.webhooks.delivery.job.DeliveryJob
+        spring.json.trusted.packages: com.webhooks.delivery.job
+
+webhook:
+  delivery:
+    timeout: 5s
 
 management:
   endpoints:
