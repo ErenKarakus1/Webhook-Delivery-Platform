@@ -53,6 +53,14 @@ node scripts/smoke-test.mjs
 
 The smoke test creates a tenant, API key, endpoint, subscription, ingests an event, and verifies the created resources can be read back through the gateway.
 
+To smoke test an already seeded tenant:
+
+```powershell
+$env:TENANT_ID="11111111-1111-1111-1111-111111111111"
+$env:API_KEY="demo-api-key"
+node scripts/smoke-test.mjs
+```
+
 ## Demo Data
 
 To load a repeatable local demo tenant and sample delivery records:
