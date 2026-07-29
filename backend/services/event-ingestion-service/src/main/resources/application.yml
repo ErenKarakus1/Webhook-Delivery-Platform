@@ -23,7 +23,16 @@ spring:
       host: localhost
       port: 6379
 
+logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"
+
 management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
   endpoints:
     web:
       exposure:

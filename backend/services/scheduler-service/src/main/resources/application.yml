@@ -24,7 +24,16 @@ webhook:
     batch-size: 100
     fixed-delay: 5000
 
+logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"
+
 management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
   endpoints:
     web:
       exposure:

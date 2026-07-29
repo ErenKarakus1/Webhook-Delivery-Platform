@@ -28,7 +28,16 @@ webhook:
     timeout: 5s
     max-attempts: 6
 
+logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"
+
 management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
   endpoints:
     web:
       exposure:
