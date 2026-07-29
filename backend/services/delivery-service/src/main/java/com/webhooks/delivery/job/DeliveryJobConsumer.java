@@ -4,6 +4,7 @@ import com.webhooks.delivery.attempt.DeliveryAttempt;
 import com.webhooks.delivery.attempt.DeliveryAttemptRepository;
 import com.webhooks.delivery.http.DeliveryHttpClient;
 import com.webhooks.delivery.http.DeliveryResult;
+import com.webhooks.delivery.retry.RetryScheduler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,10 +15,16 @@ public class DeliveryJobConsumer {
 
     private final DeliveryAttemptRepository attemptRepository;
     private final DeliveryHttpClient httpClient;
+    private final RetryScheduler retryScheduler;
 
-    public DeliveryJobConsumer(DeliveryAttemptRepository attemptRepository, DeliveryHttpClient httpClient) {
+    public DeliveryJobConsumer(
+            DeliveryAttemptRepository attemptRepository,
+            DeliveryHttpClient httpClient,
+            RetryScheduler retryScheduler
+    ) {
         this.attemptRepository = attemptRepository;
         this.httpClient = httpClient;
+        this.retryScheduler = retryScheduler;
     }
 
     @KafkaListener(topics = DELIVERY_REQUESTED_TOPIC)
@@ -32,5 +39,8 @@ public class DeliveryJobConsumer {
                 result.responseBody(),
                 result.errorMessage()
         ));
+        if (!result.successful()) {
+            retryScheduler.scheduleIfNeeded(job);
+        }
     }
 }

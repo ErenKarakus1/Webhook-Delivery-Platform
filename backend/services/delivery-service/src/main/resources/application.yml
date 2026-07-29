@@ -26,6 +26,7 @@ spring:
 webhook:
   delivery:
     timeout: 5s
+    max-attempts: 6
 
 management:
   endpoints:
