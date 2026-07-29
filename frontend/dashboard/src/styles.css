@@ -221,6 +221,22 @@ h1 {
   padding: 16px 20px;
 }
 
+.row-button {
+  background: transparent;
+  border-radius: 0;
+  color: inherit;
+  font-weight: inherit;
+  justify-content: stretch;
+  min-height: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.row-button:hover,
+.row-button.selected {
+  background: #f8fafc;
+}
+
 .row.attempt {
   grid-template-columns: minmax(0, 1fr) 110px 90px;
 }
@@ -270,6 +286,76 @@ h1 {
   color: #991b1b;
 }
 
+.event-detail {
+  grid-column: 1 / -1;
+}
+
+.detail-body {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  padding: 20px;
+}
+
+.detail-summary {
+  align-content: start;
+  display: grid;
+  gap: 8px;
+}
+
+.detail-summary span {
+  color: #667085;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.detail-summary strong,
+.detail-summary code {
+  margin-bottom: 8px;
+}
+
+.detail-summary code {
+  color: #344054;
+  overflow-wrap: anywhere;
+}
+
+.timeline {
+  border-left: 2px solid #e3e8ef;
+  display: grid;
+  gap: 12px;
+  padding-left: 16px;
+}
+
+.timeline-item {
+  align-items: center;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 110px minmax(0, 1fr) 90px;
+  position: relative;
+}
+
+.timeline-item::before {
+  background: #0f766e;
+  border: 3px solid white;
+  border-radius: 999px;
+  content: "";
+  height: 10px;
+  left: -22px;
+  position: absolute;
+  width: 10px;
+}
+
+.timeline-item div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.timeline-item div span {
+  color: #667085;
+  overflow-wrap: anywhere;
+}
+
 time {
   color: #667085;
   font-size: 14px;
@@ -303,7 +389,8 @@ time {
   }
 
   .credentials,
-  .grid {
+  .grid,
+  .detail-body {
     grid-template-columns: 1fr;
   }
 }
@@ -311,7 +398,8 @@ time {
 @media (max-width: 560px) {
   .stats,
   .row,
-  .row.attempt {
+  .row.attempt,
+  .timeline-item {
     grid-template-columns: 1fr;
   }
 }

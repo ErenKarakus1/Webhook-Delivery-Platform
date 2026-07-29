@@ -56,7 +56,10 @@ function App() {
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [retries, setRetries] = useState<Retry[]>([]);
   const [deadLetteredEvents, setDeadLetteredEvents] = useState<DeadLetteredEvent[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedEventAttempts, setSelectedEventAttempts] = useState<Attempt[]>([]);
   const [loading, setLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -102,10 +105,36 @@ function App() {
       setAttempts(attemptData);
       setRetries(retryData);
       setDeadLetteredEvents(deadLetterData);
+      setSelectedEvent(eventData[0] ?? null);
+      setSelectedEventAttempts(eventData[0] ? attemptData.filter((attempt) => attempt.eventId === eventData[0].id) : []);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not load dashboard data.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadEventDetail(eventId: string) {
+    if (!tenantId || !apiKey) {
+      setError("Tenant ID and API key are required.");
+      return;
+    }
+
+    setDetailLoading(true);
+    setError(null);
+
+    try {
+      const headers = { "X-API-Key": apiKey };
+      const [eventData, attemptData] = await Promise.all([
+        request<Event>(`/tenants/${tenantId}/events/${eventId}`, headers),
+        request<Attempt[]>(`/tenants/${tenantId}/attempts?eventId=${eventId}`, headers),
+      ]);
+      setSelectedEvent(eventData);
+      setSelectedEventAttempts(attemptData);
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Could not load event detail.");
+    } finally {
+      setDetailLoading(false);
     }
   }
 
@@ -196,13 +225,18 @@ function App() {
         <section className="grid">
           <DataPanel title="Recent events" empty="No events yet.">
             {events.slice(0, 5).map((event) => (
-              <article className="row" key={event.id}>
+              <button
+                className={`row row-button ${selectedEvent?.id === event.id ? "selected" : ""}`}
+                key={event.id}
+                onClick={() => void loadEventDetail(event.id)}
+                type="button"
+              >
                 <div>
                   <strong>{event.eventType}</strong>
                   <span>{event.id}</span>
                 </div>
                 <time>{formatDate(event.createdAt)}</time>
-              </article>
+              </button>
             ))}
           </DataPanel>
 
@@ -255,6 +289,39 @@ function App() {
               </article>
             ))}
           </DataPanel>
+
+          <section className="panel event-detail">
+            <div className="panel-header">
+              <h2>Event detail</h2>
+              {detailLoading && <span>Loading</span>}
+            </div>
+            {selectedEvent ? (
+              <div className="detail-body">
+                <div className="detail-summary">
+                  <span>Event type</span>
+                  <strong>{selectedEvent.eventType}</strong>
+                  <span>Event ID</span>
+                  <code>{selectedEvent.id}</code>
+                  <span>Created</span>
+                  <time>{formatDate(selectedEvent.createdAt)}</time>
+                </div>
+                <div className="timeline">
+                  {selectedEventAttempts.length > 0 ? selectedEventAttempts.map((attempt) => (
+                    <article className="timeline-item" key={attempt.id}>
+                      <span className={`status ${attemptStatus(attempt).toLowerCase()}`}>{attemptStatus(attempt)}</span>
+                      <div>
+                        <strong>Attempt {attempt.attemptNumber}</strong>
+                        <span>{attempt.statusCode ? `HTTP ${attempt.statusCode}` : attempt.errorMessage ?? "No response yet"}</span>
+                      </div>
+                      <time>{formatDate(attempt.attemptedAt)}</time>
+                    </article>
+                  )) : <p className="empty">No delivery attempts for this event yet.</p>}
+                </div>
+              </div>
+            ) : (
+              <p className="empty">Select an event to inspect delivery attempts.</p>
+            )}
+          </section>
         </section>
       </section>
     </main>
@@ -275,7 +342,7 @@ function DataPanel({ children, empty, title }: { children: React.ReactNode; empt
   );
 }
 
-async function request<T>(path: string, headers: Record<string, string>, init: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, headers: Record<string, string>, init: RequestInit & { headers?: Record<string, string> } = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
