@@ -9,7 +9,18 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  flyway:
+    image: flyway/flyway:10-alpine
+    command: -connectRetries=60 migrate
+    depends_on:
+      - postgres
+    volumes:
+      - ./backend/database/migrations:/flyway/sql:ro
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/webhook_platform
+      FLYWAY_USER: webhook
+      FLYWAY_PASSWORD: webhook
 
   redis:
     image: redis:7-alpine

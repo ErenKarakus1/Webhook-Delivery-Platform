@@ -18,11 +18,18 @@ The local stack includes:
 - PostgreSQL for durable webhook configuration, events, and attempts.
 - Redis for rate limiting, idempotency windows, and short-lived coordination.
 - Kafka for asynchronous delivery and retry dispatch.
+- Flyway for repeatable database migrations.
 
 ## Getting Started
 
 ```powershell
 docker compose up -d
+```
+
+Run migrations:
+
+```powershell
+docker compose run --rm flyway
 ```
 
 After installing Java 21 and Maven, run a service:
