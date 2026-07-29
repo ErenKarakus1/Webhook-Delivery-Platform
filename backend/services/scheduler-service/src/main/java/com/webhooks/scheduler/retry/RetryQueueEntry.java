@@ -38,4 +38,24 @@ public class RetryQueueEntry {
     public DeliveryJob getPayload() {
         return payload;
     }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public UUID getEventId() {
+        return eventId;
+    }
+
+    public UUID getEndpointId() {
+        return endpointId;
+    }
+
+    public int getAttemptNumber() {
+        return attemptNumber;
+    }
+
+    public Instant getDueAt() {
+        return dueAt;
+    }
 }

@@ -68,4 +68,36 @@ public class DeliveryAttempt {
         }
         return value.substring(0, 4000);
     }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public UUID getEventId() {
+        return eventId;
+    }
+
+    public UUID getEndpointId() {
+        return endpointId;
+    }
+
+    public int getAttemptNumber() {
+        return attemptNumber;
+    }
+
+    public Integer getStatusCode() {
+        return statusCode;
+    }
+
+    public String getResponseBody() {
+        return responseBody;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public Instant getAttemptedAt() {
+        return attemptedAt;
+    }
 }

@@ -32,9 +32,7 @@ public class EventIngestionService {
 
     @Transactional
     public EventIngestionResponse ingest(UUID tenantId, String idempotencyKey, IngestEventRequest request) {
-        if (!tenantRepository.existsById(tenantId)) {
-            throw new ResourceNotFoundException("Tenant not found: " + tenantId);
-        }
+        ensureTenantExists(tenantId);
 
         String normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
         if (normalizedIdempotencyKey != null) {
@@ -44,6 +42,22 @@ public class EventIngestionService {
         }
 
         return ingestNewEvent(tenantId, null, request);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EventResponse> listEvents(UUID tenantId) {
+        ensureTenantExists(tenantId);
+        return eventRepository.findByTenantIdOrderByCreatedAtDesc(tenantId).stream()
+                .map(EventResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public EventResponse getEvent(UUID tenantId, UUID eventId) {
+        ensureTenantExists(tenantId);
+        return eventRepository.findByIdAndTenantId(eventId, tenantId)
+                .map(EventResponse::from)
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
     }
 
     private EventIngestionResponse ingestNewEvent(UUID tenantId, String idempotencyKey, IngestEventRequest request) {
@@ -66,6 +80,12 @@ public class EventIngestionService {
         )));
 
         return toResponse(event, subscriptions.size(), false);
+    }
+
+    private void ensureTenantExists(UUID tenantId) {
+        if (!tenantRepository.existsById(tenantId)) {
+            throw new ResourceNotFoundException("Tenant not found: " + tenantId);
+        }
     }
 
     private Event insertEvent(UUID tenantId, String idempotencyKey, IngestEventRequest request) {

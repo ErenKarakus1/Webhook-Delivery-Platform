@@ -2,8 +2,10 @@ package com.webhooks.ingestion.event;
 
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,5 +34,15 @@ public class EventController {
         }
         return ResponseEntity.created(URI.create("/tenants/" + tenantId + "/events/" + response.eventId()))
                 .body(response);
+    }
+
+    @GetMapping
+    List<EventResponse> listEvents(@PathVariable UUID tenantId) {
+        return eventIngestionService.listEvents(tenantId);
+    }
+
+    @GetMapping("/{eventId}")
+    EventResponse getEvent(@PathVariable UUID tenantId, @PathVariable UUID eventId) {
+        return eventIngestionService.getEvent(tenantId, eventId);
     }
 }

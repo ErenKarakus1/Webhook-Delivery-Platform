@@ -8,6 +8,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface RetryQueueRepository extends JpaRepository<RetryQueueEntry, UUID> {
+    List<RetryQueueEntry> findByEventIdOrderByDueAtAsc(UUID eventId);
+
+    List<RetryQueueEntry> findByEndpointIdOrderByDueAtAsc(UUID endpointId);
+
     @Query(
             value = """
                     select *
