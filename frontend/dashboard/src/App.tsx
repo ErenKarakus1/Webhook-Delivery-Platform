@@ -1,5 +1,5 @@
 import React, { FormEvent, useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, Bell, Clock, Power, RefreshCcw, Search, Server, Trash2 } from "lucide-react";
+import { Activity, AlertTriangle, Bell, Clock, Power, RefreshCcw } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -82,8 +82,6 @@ function App() {
   const [eventType, setEventType] = useState("order.created");
   const [eventPayload, setEventPayload] = useState('{\n  "orderId": "ord_123",\n  "total": 49.99\n}');
   const [idempotencyKey, setIdempotencyKey] = useState("");
-  const [eventSearch, setEventSearch] = useState("");
-  const [attemptFilter, setAttemptFilter] = useState<"all" | "delivered" | "failed" | "retrying">("all");
   const [loading, setLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [endpointLoading, setEndpointLoading] = useState(false);
@@ -100,34 +98,13 @@ function App() {
 
     return [
       { label: "Events", value: events.length.toString(), icon: Bell },
-      { label: "Success rate", value: successRate, icon: Activity },
-      { label: "Pending retries", value: retries.length.toString(), icon: Clock },
-      { label: "Dead-lettered", value: deadLetteredEvents.length.toString(), icon: AlertTriangle },
-      { label: "Active endpoints", value: endpoints.filter((endpoint) => endpoint.active).length.toString(), icon: Server },
-      { label: "Subscriptions", value: subscriptions.filter((subscription) => subscription.active).length.toString(), icon: Power },
+      { label: "Success", value: successRate, icon: Activity },
+      { label: "Retries", value: retries.length.toString(), icon: Clock },
+      { label: "Dead letters", value: deadLetteredEvents.length.toString(), icon: AlertTriangle },
     ];
-  }, [attempts, deadLetteredEvents, endpoints, events, retries, subscriptions]);
+  }, [attempts, deadLetteredEvents, events, retries]);
 
-  const visibleEvents = useMemo(() => {
-    const query = eventSearch.trim().toLowerCase();
-    if (!query) {
-      return events.slice(0, 8);
-    }
-    return events
-      .filter((event) => event.eventType.toLowerCase().includes(query) || event.id.toLowerCase().includes(query))
-      .slice(0, 8);
-  }, [eventSearch, events]);
-
-  const visibleAttempts = useMemo(() => {
-    return attempts
-      .filter((attempt) => {
-        if (attemptFilter === "all") {
-          return true;
-        }
-        return attemptStatus(attempt).toLowerCase() === attemptFilter;
-      })
-      .slice(0, 8);
-  }, [attemptFilter, attempts]);
+  const recentAttempts = selectedEvent ? selectedEventAttempts : attempts.slice(0, 6);
 
   useEffect(() => {
     localStorage.setItem("tenantId", tenantId);
@@ -251,25 +228,6 @@ function App() {
     }
   }
 
-  async function deleteEndpoint(endpointId: string) {
-    if (!tenantId || !apiKey) {
-      setError("Tenant ID and API key are required.");
-      return;
-    }
-
-    setEndpointActionLoading(endpointId);
-    setError(null);
-
-    try {
-      await requestNoContent(`/tenants/${tenantId}/endpoints/${endpointId}`, { "X-API-Key": apiKey }, { method: "DELETE" });
-      setEndpoints((current) => current.filter((endpoint) => endpoint.id !== endpointId));
-    } catch (exception) {
-      setError(exception instanceof Error ? exception.message : "Could not delete endpoint.");
-    } finally {
-      setEndpointActionLoading(null);
-    }
-  }
-
   async function createSubscription(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!tenantId || !apiKey) {
@@ -322,25 +280,6 @@ function App() {
       setSubscriptions((current) => current.map((item) => item.id === updatedSubscription.id ? updatedSubscription : item));
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not update subscription.");
-    } finally {
-      setSubscriptionActionLoading(null);
-    }
-  }
-
-  async function deleteSubscription(subscriptionId: string) {
-    if (!tenantId || !apiKey) {
-      setError("Tenant ID and API key are required.");
-      return;
-    }
-
-    setSubscriptionActionLoading(subscriptionId);
-    setError(null);
-
-    try {
-      await requestNoContent(`/tenants/${tenantId}/subscriptions/${subscriptionId}`, { "X-API-Key": apiKey }, { method: "DELETE" });
-      setSubscriptions((current) => current.filter((subscription) => subscription.id !== subscriptionId));
-    } catch (exception) {
-      setError(exception instanceof Error ? exception.message : "Could not delete subscription.");
     } finally {
       setSubscriptionActionLoading(null);
     }
@@ -419,97 +358,68 @@ function App() {
 
   return (
     <main className="app">
-      <aside className="sidebar">
-        <div className="brand">Webhook Platform</div>
-        <nav>
-          <a className="active" href="#overview">Overview</a>
-          <a href="#endpoints">Endpoints</a>
-          <a href="#events">Events</a>
-          <a href="#attempts">Attempts</a>
-          <a href="#settings">Settings</a>
-        </nav>
-      </aside>
-
-      <section className="content">
-        <header className="topbar" id="overview">
-          <div>
-            <h1>Delivery Overview</h1>
-            <p>Track webhook traffic, retries, and endpoint health.</p>
-          </div>
-          <button type="button" onClick={() => void loadDashboard()} disabled={loading}>
-            <RefreshCcw size={16} aria-hidden="true" />
-            Refresh
-          </button>
-        </header>
-
-        <form className="credentials" id="settings" onSubmit={submitCredentials}>
-          <label>
-            <span>Tenant ID</span>
-            <input value={tenantId} onChange={(event) => setTenantId(event.target.value)} />
-          </label>
-          <label>
-            <span>API key</span>
-            <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} />
-          </label>
-          <button type="submit" disabled={loading}>Connect</button>
-        </form>
-
-        <div className="setup">
-          <span>Need local credentials?</span>
-          <button type="button" className="secondary" onClick={createTenantAndApiKey} disabled={setupLoading}>
-            Create tenant
-          </button>
+      <header className="topbar">
+        <div>
+          <p className="eyebrow">Webhook Delivery Platform</p>
+          <h1>Test a webhook delivery.</h1>
         </div>
+        <button type="button" onClick={() => void loadDashboard()} disabled={loading}>
+          <RefreshCcw size={16} aria-hidden="true" />
+          Refresh
+        </button>
+      </header>
 
-        {error && <div className="error">{error}</div>}
+      <form className="connection" onSubmit={submitCredentials}>
+        <label>
+          <span>Tenant ID</span>
+          <input value={tenantId} onChange={(event) => setTenantId(event.target.value)} />
+        </label>
+        <label>
+          <span>API key</span>
+          <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} />
+        </label>
+        <button type="submit" disabled={loading}>Connect</button>
+        <button type="button" className="secondary" onClick={createTenantAndApiKey} disabled={setupLoading}>
+          Create tenant
+        </button>
+      </form>
 
-        <section className="stats">
-          {stats.map(({ label, value, icon: Icon }) => (
-            <article className="stat" key={label}>
-              <Icon size={20} aria-hidden="true" />
-              <span>{label}</span>
-              <strong>{value}</strong>
-            </article>
-          ))}
+      {error && <div className="error">{error}</div>}
+
+      <section className="stats">
+        {stats.map(({ label, value, icon: Icon }) => (
+          <article className="stat" key={label}>
+            <Icon size={18} aria-hidden="true" />
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <section className="workspace">
+        <section className="panel send-panel">
+          <PanelHeader title="Send event" meta="Demo payload" />
+          <form className="stack-form" onSubmit={ingestEvent}>
+            <label>
+              <span>Event type</span>
+              <input value={eventType} onChange={(event) => setEventType(event.target.value)} />
+            </label>
+            <label>
+              <span>Idempotency key</span>
+              <input placeholder="Optional" value={idempotencyKey} onChange={(event) => setIdempotencyKey(event.target.value)} />
+            </label>
+            <label>
+              <span>Payload</span>
+              <textarea value={eventPayload} onChange={(event) => setEventPayload(event.target.value)} spellCheck={false} />
+            </label>
+            <button type="submit" disabled={eventLoading}>Send event</button>
+          </form>
         </section>
 
-        <section className="grid">
-          <DataPanel id="events" title="Recent events" empty="No events yet.">
-            <label className="panel-search">
-              <Search size={16} aria-hidden="true" />
-              <input
-                aria-label="Search events"
-                placeholder="Search event type or ID"
-                value={eventSearch}
-                onChange={(event) => setEventSearch(event.target.value)}
-              />
-            </label>
-            <form className="event-create" onSubmit={ingestEvent}>
-              <div className="inline-create">
-                <input
-                  aria-label="Event type"
-                  placeholder="order.created"
-                  value={eventType}
-                  onChange={(event) => setEventType(event.target.value)}
-                />
-                <input
-                  aria-label="Idempotency key"
-                  placeholder="Idempotency key"
-                  value={idempotencyKey}
-                  onChange={(event) => setIdempotencyKey(event.target.value)}
-                />
-              </div>
-              <textarea
-                aria-label="Event JSON payload"
-                value={eventPayload}
-                onChange={(event) => setEventPayload(event.target.value)}
-                spellCheck={false}
-              />
-              <div className="form-actions">
-                <button type="submit" disabled={eventLoading}>Ingest event</button>
-              </div>
-            </form>
-            {visibleEvents.map((event) => (
+        <section className="panel">
+          <PanelHeader title="Recent events" meta={`${events.length} total`} />
+          <div className="list">
+            {events.slice(0, 8).length > 0 ? events.slice(0, 8).map((event) => (
               <button
                 className={`row row-button ${selectedEvent?.id === event.id ? "selected" : ""}`}
                 key={event.id}
@@ -522,129 +432,116 @@ function App() {
                 </div>
                 <time>{formatDate(event.createdAt)}</time>
               </button>
-            ))}
-          </DataPanel>
+            )) : <p className="empty">No events yet.</p>}
+          </div>
+        </section>
 
-          <DataPanel id="attempts" title="Recent attempts" empty="No attempts yet.">
-            <div className="segmented" aria-label="Filter attempts">
-              {(["all", "delivered", "failed", "retrying"] as const).map((filter) => (
-                <button
-                  className={attemptFilter === filter ? "selected" : ""}
-                  key={filter}
-                  onClick={() => setAttemptFilter(filter)}
-                  type="button"
-                >
-                  {capitalize(filter)}
-                </button>
-              ))}
+        <section className="panel">
+          <PanelHeader title={selectedEvent ? "Selected delivery" : "Delivery attempts"} meta={detailLoading ? "Loading" : `${recentAttempts.length} shown`} />
+          {selectedEvent && (
+            <div className="selected-event">
+              <strong>{selectedEvent.eventType}</strong>
+              <code>{selectedEvent.id}</code>
             </div>
-            {visibleAttempts.map((attempt) => (
+          )}
+          <div className="list">
+            {recentAttempts.length > 0 ? recentAttempts.map((attempt) => (
               <article className="row attempt" key={attempt.id}>
                 <div>
                   <strong>Attempt {attempt.attemptNumber}</strong>
-                  <span>{attempt.eventId}</span>
+                  <span>{attempt.statusCode ? `HTTP ${attempt.statusCode}` : attempt.errorMessage ?? attempt.eventId}</span>
                 </div>
                 <span className={`status ${attemptStatus(attempt).toLowerCase()}`}>{attemptStatus(attempt)}</span>
                 <time>{formatDate(attempt.attemptedAt)}</time>
               </article>
-            ))}
-          </DataPanel>
+            )) : <p className="empty">No delivery attempts yet.</p>}
+          </div>
+        </section>
 
-          <DataPanel id="endpoints" title="Endpoints" empty="No endpoints configured.">
-            <form className="inline-create" onSubmit={createEndpoint}>
-              <input
-                aria-label="Endpoint HTTPS URL"
-                placeholder="https://example.com/webhooks"
-                value={endpointUrl}
-                onChange={(event) => setEndpointUrl(event.target.value)}
-              />
-              <button type="submit" disabled={endpointLoading}>Add</button>
-            </form>
-            {endpoints.slice(0, 5).map((endpoint) => (
-              <article className="row endpoint-row" key={endpoint.id}>
-                <div>
-                  <strong>{endpoint.active ? "Active" : "Inactive"}</strong>
-                  <span>{endpoint.url}</span>
-                </div>
-                <div className="row-actions">
-                  <button
-                    aria-label={endpoint.active ? "Deactivate endpoint" : "Activate endpoint"}
-                    className="icon-button"
-                    disabled={endpointActionLoading === endpoint.id}
-                    onClick={() => void setEndpointActive(endpoint, !endpoint.active)}
-                    type="button"
-                  >
-                    <Power size={16} aria-hidden="true" />
-                  </button>
-                  <button
-                    aria-label="Delete endpoint"
-                    className="icon-button danger"
-                    disabled={endpointActionLoading === endpoint.id}
-                    onClick={() => void deleteEndpoint(endpoint.id)}
-                    type="button"
-                  >
-                    <Trash2 size={16} aria-hidden="true" />
-                  </button>
-                </div>
-                <time>{formatDate(endpoint.createdAt)}</time>
-              </article>
-            ))}
-          </DataPanel>
-
-          <DataPanel title="Subscriptions" empty="No subscriptions configured.">
-            <form className="inline-create subscription-create" onSubmit={createSubscription}>
-              <select
-                aria-label="Subscription endpoint"
-                value={subscriptionEndpointId}
-                onChange={(event) => setSubscriptionEndpointId(event.target.value)}
-              >
-                <option value="">Select endpoint</option>
-                {endpoints.map((endpoint) => (
-                  <option key={endpoint.id} value={endpoint.id}>{endpoint.url}</option>
+        <section className="panel setup-panel">
+          <PanelHeader title="Setup" meta={`${endpoints.length} endpoints, ${subscriptions.length} subscriptions`} />
+          <div className="setup-grid">
+            <div>
+              <h2>Endpoint</h2>
+              <form className="inline-form" onSubmit={createEndpoint}>
+                <input
+                  aria-label="Endpoint HTTPS URL"
+                  placeholder="https://example.com/webhooks"
+                  value={endpointUrl}
+                  onChange={(event) => setEndpointUrl(event.target.value)}
+                />
+                <button type="submit" disabled={endpointLoading}>Add</button>
+              </form>
+              <SimpleList empty="No endpoints configured.">
+                {endpoints.slice(0, 4).map((endpoint) => (
+                  <article className="compact-row" key={endpoint.id}>
+                    <div>
+                      <strong>{endpoint.active ? "Active" : "Inactive"}</strong>
+                      <span>{endpoint.url}</span>
+                    </div>
+                    <button
+                      aria-label={endpoint.active ? "Deactivate endpoint" : "Activate endpoint"}
+                      className="icon-button"
+                      disabled={endpointActionLoading === endpoint.id}
+                      onClick={() => void setEndpointActive(endpoint, !endpoint.active)}
+                      type="button"
+                    >
+                      <Power size={16} aria-hidden="true" />
+                    </button>
+                  </article>
                 ))}
-              </select>
-              <input
-                aria-label="Subscription event type"
-                placeholder="order.created"
-                value={subscriptionEventType}
-                onChange={(event) => setSubscriptionEventType(event.target.value)}
-              />
-              <button type="submit" disabled={subscriptionLoading}>Add</button>
-            </form>
-            {subscriptions.slice(0, 5).map((subscription) => (
-              <article className="row endpoint-row" key={subscription.id}>
-                <div>
-                  <strong>{subscription.active ? "Active" : "Inactive"} · {subscription.eventType}</strong>
-                  <span>{endpointLabel(subscription.endpointId, endpoints)}</span>
-                </div>
-                <div className="row-actions">
-                  <button
-                    aria-label={subscription.active ? "Deactivate subscription" : "Activate subscription"}
-                    className="icon-button"
-                    disabled={subscriptionActionLoading === subscription.id}
-                    onClick={() => void setSubscriptionActive(subscription, !subscription.active)}
-                    type="button"
-                  >
-                    <Power size={16} aria-hidden="true" />
-                  </button>
-                  <button
-                    aria-label="Delete subscription"
-                    className="icon-button danger"
-                    disabled={subscriptionActionLoading === subscription.id}
-                    onClick={() => void deleteSubscription(subscription.id)}
-                    type="button"
-                  >
-                    <Trash2 size={16} aria-hidden="true" />
-                  </button>
-                </div>
-                <time>{formatDate(subscription.createdAt)}</time>
-              </article>
-            ))}
-          </DataPanel>
+              </SimpleList>
+            </div>
+            <div>
+              <h2>Subscription</h2>
+              <form className="inline-form subscription-form" onSubmit={createSubscription}>
+                <select
+                  aria-label="Subscription endpoint"
+                  value={subscriptionEndpointId}
+                  onChange={(event) => setSubscriptionEndpointId(event.target.value)}
+                >
+                  <option value="">Select endpoint</option>
+                  {endpoints.map((endpoint) => (
+                    <option key={endpoint.id} value={endpoint.id}>{endpoint.url}</option>
+                  ))}
+                </select>
+                <input
+                  aria-label="Subscription event type"
+                  value={subscriptionEventType}
+                  onChange={(event) => setSubscriptionEventType(event.target.value)}
+                />
+                <button type="submit" disabled={subscriptionLoading}>Add</button>
+              </form>
+              <SimpleList empty="No subscriptions configured.">
+                {subscriptions.slice(0, 4).map((subscription) => (
+                  <article className="compact-row" key={subscription.id}>
+                    <div>
+                      <strong>{subscription.active ? "Active" : "Inactive"} / {subscription.eventType}</strong>
+                      <span>{endpointLabel(subscription.endpointId, endpoints)}</span>
+                    </div>
+                    <button
+                      aria-label={subscription.active ? "Deactivate subscription" : "Activate subscription"}
+                      className="icon-button"
+                      disabled={subscriptionActionLoading === subscription.id}
+                      onClick={() => void setSubscriptionActive(subscription, !subscription.active)}
+                      type="button"
+                    >
+                      <Power size={16} aria-hidden="true" />
+                    </button>
+                  </article>
+                ))}
+              </SimpleList>
+            </div>
+          </div>
+        </section>
+      </section>
 
-          <DataPanel title="Retry queue" empty="No pending retries.">
+      <details className="advanced">
+        <summary>Advanced queues</summary>
+        <div className="advanced-grid">
+          <Queue title="Retry queue" empty="No pending retries.">
             {retries.slice(0, 5).map((retry) => (
-              <article className="row" key={retry.id}>
+              <article className="compact-row" key={retry.id}>
                 <div>
                   <strong>Attempt {retry.attemptNumber}</strong>
                   <span>{retry.eventId}</span>
@@ -652,69 +549,43 @@ function App() {
                 <time>{formatDate(retry.dueAt)}</time>
               </article>
             ))}
-          </DataPanel>
-
-          <DataPanel title="Dead-lettered events" empty="No dead-lettered events.">
+          </Queue>
+          <Queue title="Dead letters" empty="No dead-lettered events.">
             {deadLetteredEvents.slice(0, 5).map((event) => (
-              <article className="row attempt" key={event.id}>
+              <article className="compact-row" key={event.id}>
                 <div>
                   <strong>{event.eventType}</strong>
                   <span>{event.errorMessage ?? event.eventId}</span>
                 </div>
                 <span className="status failed">{event.statusCode ?? "Failed"}</span>
-                <time>{formatDate(event.createdAt)}</time>
               </article>
             ))}
-          </DataPanel>
-
-          <section className="panel event-detail">
-            <div className="panel-header">
-              <h2>Event detail</h2>
-              {detailLoading && <span>Loading</span>}
-            </div>
-            {selectedEvent ? (
-              <div className="detail-body">
-                <div className="detail-summary">
-                  <span>Event type</span>
-                  <strong>{selectedEvent.eventType}</strong>
-                  <span>Event ID</span>
-                  <code>{selectedEvent.id}</code>
-                  <span>Created</span>
-                  <time>{formatDate(selectedEvent.createdAt)}</time>
-                </div>
-                <div className="timeline">
-                  {selectedEventAttempts.length > 0 ? selectedEventAttempts.map((attempt) => (
-                    <article className="timeline-item" key={attempt.id}>
-                      <span className={`status ${attemptStatus(attempt).toLowerCase()}`}>{attemptStatus(attempt)}</span>
-                      <div>
-                        <strong>Attempt {attempt.attemptNumber}</strong>
-                        <span>{attempt.statusCode ? `HTTP ${attempt.statusCode}` : attempt.errorMessage ?? "No response yet"}</span>
-                      </div>
-                      <time>{formatDate(attempt.attemptedAt)}</time>
-                    </article>
-                  )) : <p className="empty">No delivery attempts for this event yet.</p>}
-                </div>
-              </div>
-            ) : (
-              <p className="empty">Select an event to inspect delivery attempts.</p>
-            )}
-          </section>
-        </section>
-      </section>
+          </Queue>
+        </div>
+      </details>
     </main>
   );
 }
 
-function DataPanel({ children, empty, id, title }: { children: React.ReactNode; empty: string; id?: string; title: string }) {
-  const items = React.Children.toArray(children).filter(Boolean);
+function PanelHeader({ meta, title }: { meta?: string; title: string }) {
   return (
-    <section className="panel" id={id}>
-      <div className="panel-header">
-        <h2>{title}</h2>
-      </div>
-      <div className="list">
-        {items.length > 0 ? items : <p className="empty">{empty}</p>}
-      </div>
+    <div className="panel-header">
+      <h2>{title}</h2>
+      {meta && <span>{meta}</span>}
+    </div>
+  );
+}
+
+function SimpleList({ children, empty }: { children: React.ReactNode; empty: string }) {
+  const items = React.Children.toArray(children).filter(Boolean);
+  return <div className="simple-list">{items.length > 0 ? items : <p className="empty">{empty}</p>}</div>;
+}
+
+function Queue({ children, empty, title }: { children: React.ReactNode; empty: string; title: string }) {
+  return (
+    <section className="queue">
+      <h2>{title}</h2>
+      <SimpleList empty={empty}>{children}</SimpleList>
     </section>
   );
 }
@@ -734,20 +605,6 @@ async function request<T>(path: string, headers: Record<string, string>, init: R
   return response.json() as Promise<T>;
 }
 
-async function requestNoContent(path: string, headers: Record<string, string>, init: RequestInit & { headers?: Record<string, string> } = {}): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-      ...init.headers,
-    },
-  });
-  if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
-  }
-}
-
 function attemptStatus(attempt: Attempt) {
   if (attempt.statusCode && attempt.statusCode >= 200 && attempt.statusCode < 300) {
     return "Delivered";
@@ -756,10 +613,6 @@ function attemptStatus(attempt: Attempt) {
     return "Failed";
   }
   return "Retrying";
-}
-
-function capitalize(value: string) {
-  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
 
 function endpointLabel(endpointId: string, endpoints: Endpoint[]) {
