@@ -4,19 +4,16 @@ server:
 spring:
   application:
     name: api-gateway
-  datasource:
-    url: jdbc:postgresql://localhost:5432/webhook_platform
-    username: webhook
-    password: webhook
-  jpa:
-    hibernate:
-      ddl-auto: validate
-  kafka:
-    bootstrap-servers: localhost:9092
-  data:
-    redis:
-      host: localhost
-      port: 6379
+
+services:
+  webhook-management:
+    base-url: http://localhost:8083
+  event-ingestion:
+    base-url: http://localhost:8084
+  delivery:
+    base-url: http://localhost:8081
+  scheduler:
+    base-url: http://localhost:8082
 
 management:
   endpoints:
