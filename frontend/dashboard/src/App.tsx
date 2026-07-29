@@ -58,8 +58,10 @@ function App() {
   const [deadLetteredEvents, setDeadLetteredEvents] = useState<DeadLetteredEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [selectedEventAttempts, setSelectedEventAttempts] = useState<Attempt[]>([]);
+  const [endpointUrl, setEndpointUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [endpointLoading, setEndpointLoading] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -141,6 +143,34 @@ function App() {
   function submitCredentials(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void loadDashboard();
+  }
+
+  async function createEndpoint(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!tenantId || !apiKey) {
+      setError("Tenant ID and API key are required.");
+      return;
+    }
+    if (!endpointUrl.trim()) {
+      setError("Endpoint URL is required.");
+      return;
+    }
+
+    setEndpointLoading(true);
+    setError(null);
+
+    try {
+      const endpoint = await request<Endpoint>(`/tenants/${tenantId}/endpoints`, { "X-API-Key": apiKey }, {
+        method: "POST",
+        body: JSON.stringify({ url: endpointUrl.trim() }),
+      });
+      setEndpoints((current) => [endpoint, ...current]);
+      setEndpointUrl("");
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Could not create endpoint.");
+    } finally {
+      setEndpointLoading(false);
+    }
   }
 
   async function createTenantAndApiKey() {
@@ -254,6 +284,15 @@ function App() {
           </DataPanel>
 
           <DataPanel title="Endpoints" empty="No endpoints configured.">
+            <form className="inline-create" onSubmit={createEndpoint}>
+              <input
+                aria-label="Endpoint HTTPS URL"
+                placeholder="https://example.com/webhooks"
+                value={endpointUrl}
+                onChange={(event) => setEndpointUrl(event.target.value)}
+              />
+              <button type="submit" disabled={endpointLoading}>Add</button>
+            </form>
             {endpoints.slice(0, 5).map((endpoint) => (
               <article className="row" key={endpoint.id}>
                 <div>

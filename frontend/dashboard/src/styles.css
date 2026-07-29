@@ -221,6 +221,14 @@ h1 {
   padding: 16px 20px;
 }
 
+.inline-create {
+  border-bottom: 1px solid #edf1f5;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 14px 20px;
+}
+
 .row-button {
   background: transparent;
   border-radius: 0;
@@ -399,6 +407,7 @@ time {
   .stats,
   .row,
   .row.attempt,
+  .inline-create,
   .timeline-item {
     grid-template-columns: 1fr;
   }
