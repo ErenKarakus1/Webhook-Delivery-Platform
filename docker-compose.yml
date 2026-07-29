@@ -41,5 +41,96 @@ services:
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
       ALLOW_PLAINTEXT_LISTENER: "yes"
 
+  api-gateway:
+    build:
+      context: ./backend/services
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: api-gateway
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/webhook_platform
+      SPRING_DATASOURCE_USERNAME: webhook
+      SPRING_DATASOURCE_PASSWORD: webhook
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATA_REDIS_HOST: redis
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    ports:
+      - "8080:8080"
+
+  event-ingestion-service:
+    build:
+      context: ./backend/services
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: event-ingestion-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/webhook_platform
+      SPRING_DATASOURCE_USERNAME: webhook
+      SPRING_DATASOURCE_PASSWORD: webhook
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATA_REDIS_HOST: redis
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    ports:
+      - "8084:8084"
+
+  webhook-management-service:
+    build:
+      context: ./backend/services
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: webhook-management-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/webhook_platform
+      SPRING_DATASOURCE_USERNAME: webhook
+      SPRING_DATASOURCE_PASSWORD: webhook
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATA_REDIS_HOST: redis
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    ports:
+      - "8083:8083"
+
+  delivery-service:
+    build:
+      context: ./backend/services
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: delivery-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/webhook_platform
+      SPRING_DATASOURCE_USERNAME: webhook
+      SPRING_DATASOURCE_PASSWORD: webhook
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+    ports:
+      - "8081:8081"
+
+  scheduler-service:
+    build:
+      context: ./backend/services
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: scheduler-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/webhook_platform
+      SPRING_DATASOURCE_USERNAME: webhook
+      SPRING_DATASOURCE_PASSWORD: webhook
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+    ports:
+      - "8082:8082"
+
 volumes:
   postgres_data:
