@@ -65,5 +65,8 @@ jobs:
       - name: Validate Docker Compose config
         run: docker compose config
 
+      - name: Validate Docker Compose seed profile
+        run: docker compose --profile seed config
+
       - name: Validate smoke test script
         run: node --check scripts/smoke-test.mjs

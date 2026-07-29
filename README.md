@@ -111,3 +111,4 @@ GitHub Actions runs on pushes to `main` and pull requests:
 
 - Backend: Java 21 and `mvn test`
 - Frontend: Node 20, `npm ci`, and `npm run build`
+- Platform: Docker Compose config validation, seed profile validation, and smoke-test syntax validation
