@@ -9,6 +9,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(InvalidRequestException.class)
+    ResponseEntity<ApiError> handleInvalidRequest(InvalidRequestException exception) {
+        return ResponseEntity.badRequest()
+                .body(ApiError.of("invalid_request", exception.getMessage()));
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

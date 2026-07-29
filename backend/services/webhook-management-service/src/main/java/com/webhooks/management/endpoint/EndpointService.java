@@ -11,21 +11,25 @@ import org.springframework.transaction.annotation.Transactional;
 public class EndpointService {
     private final EndpointRepository endpointRepository;
     private final EndpointSecretGenerator secretGenerator;
+    private final EndpointUrlValidator urlValidator;
     private final TenantService tenantService;
 
     public EndpointService(
             EndpointRepository endpointRepository,
             EndpointSecretGenerator secretGenerator,
+            EndpointUrlValidator urlValidator,
             TenantService tenantService
     ) {
         this.endpointRepository = endpointRepository;
         this.secretGenerator = secretGenerator;
+        this.urlValidator = urlValidator;
         this.tenantService = tenantService;
     }
 
     @Transactional
     public EndpointResponse createEndpoint(UUID tenantId, CreateEndpointRequest request) {
         tenantService.getTenantEntity(tenantId);
+        urlValidator.validate(request.url());
         WebhookEndpoint endpoint = endpointRepository.save(
                 new WebhookEndpoint(tenantId, request.url(), secretGenerator.generate())
         );
@@ -48,6 +52,7 @@ public class EndpointService {
     @Transactional
     public EndpointResponse updateEndpoint(UUID tenantId, UUID endpointId, UpdateEndpointRequest request) {
         WebhookEndpoint endpoint = findEndpoint(tenantId, endpointId);
+        urlValidator.validate(request.url());
         endpoint.setUrl(request.url());
         return EndpointResponse.from(endpoint);
     }
