@@ -5,6 +5,7 @@ A microservices-based webhook delivery platform built with Java/Spring Boot, Pos
 ## Services
 
 - `api-gateway`: external API entry point for tenants, endpoints, and event ingestion.
+- `webhook-management-service`: tenant-scoped webhook endpoint and subscription management.
 - `delivery-service`: consumes webhook delivery jobs from Kafka and performs outbound HTTP delivery.
 - `scheduler-service`: moves due retries from PostgreSQL into Kafka.
 - `dashboard`: React UI for observing endpoints, events, attempts, and delivery health.

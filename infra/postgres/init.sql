@@ -1,4 +1,5 @@
 CREATE SCHEMA IF NOT EXISTS gateway;
+CREATE SCHEMA IF NOT EXISTS management;
 CREATE SCHEMA IF NOT EXISTS delivery;
 CREATE SCHEMA IF NOT EXISTS scheduler;
 
@@ -15,6 +16,16 @@ CREATE TABLE IF NOT EXISTS gateway.webhook_endpoints (
     secret TEXT NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS management.webhook_subscriptions (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES gateway.tenants(id),
+    endpoint_id UUID NOT NULL REFERENCES gateway.webhook_endpoints(id),
+    event_type TEXT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (endpoint_id, event_type)
 );
 
 CREATE TABLE IF NOT EXISTS gateway.events (
