@@ -134,8 +134,8 @@ function App() {
     localStorage.setItem("apiKey", apiKey);
   }, [apiKey, tenantId]);
 
-  async function loadDashboard() {
-    if (!tenantId || !apiKey) {
+  async function loadDashboard(nextTenantId = tenantId, nextApiKey = apiKey) {
+    if (!nextTenantId || !nextApiKey) {
       setError("Tenant ID and API key are required.");
       return;
     }
@@ -144,14 +144,14 @@ function App() {
     setError(null);
 
     try {
-      const headers = { "X-API-Key": apiKey };
+      const headers = { "X-API-Key": nextApiKey };
       const [endpointData, subscriptionData, eventData, attemptData, retryData, deadLetterData] = await Promise.all([
-        request<Endpoint[]>(`/tenants/${tenantId}/endpoints`, headers),
-        request<Subscription[]>(`/tenants/${tenantId}/subscriptions`, headers),
-        request<Event[]>(`/tenants/${tenantId}/events`, headers),
-        request<Attempt[]>(`/tenants/${tenantId}/attempts`, headers),
-        request<Retry[]>(`/tenants/${tenantId}/retries`, headers),
-        request<DeadLetteredEvent[]>(`/tenants/${tenantId}/dead-lettered-events`, headers),
+        request<Endpoint[]>(`/tenants/${nextTenantId}/endpoints`, headers),
+        request<Subscription[]>(`/tenants/${nextTenantId}/subscriptions`, headers),
+        request<Event[]>(`/tenants/${nextTenantId}/events`, headers),
+        request<Attempt[]>(`/tenants/${nextTenantId}/attempts`, headers),
+        request<Retry[]>(`/tenants/${nextTenantId}/retries`, headers),
+        request<DeadLetteredEvent[]>(`/tenants/${nextTenantId}/dead-lettered-events`, headers),
       ]);
 
       setEndpoints(endpointData);
@@ -409,6 +409,7 @@ function App() {
       });
       setTenantId(tenant.id);
       setApiKey(apiKeyResponse.apiKey);
+      await loadDashboard(tenant.id, apiKeyResponse.apiKey);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not create local tenant.");
     } finally {
@@ -421,16 +422,16 @@ function App() {
       <aside className="sidebar">
         <div className="brand">Webhook Platform</div>
         <nav>
-          <a className="active" href="/">Overview</a>
-          <a href="/">Endpoints</a>
-          <a href="/">Events</a>
-          <a href="/">Attempts</a>
-          <a href="/">Settings</a>
+          <a className="active" href="#overview">Overview</a>
+          <a href="#endpoints">Endpoints</a>
+          <a href="#events">Events</a>
+          <a href="#attempts">Attempts</a>
+          <a href="#settings">Settings</a>
         </nav>
       </aside>
 
       <section className="content">
-        <header className="topbar">
+        <header className="topbar" id="overview">
           <div>
             <h1>Delivery Overview</h1>
             <p>Track webhook traffic, retries, and endpoint health.</p>
@@ -441,7 +442,7 @@ function App() {
           </button>
         </header>
 
-        <form className="credentials" onSubmit={submitCredentials}>
+        <form className="credentials" id="settings" onSubmit={submitCredentials}>
           <label>
             <span>Tenant ID</span>
             <input value={tenantId} onChange={(event) => setTenantId(event.target.value)} />
@@ -473,7 +474,7 @@ function App() {
         </section>
 
         <section className="grid">
-          <DataPanel title="Recent events" empty="No events yet.">
+          <DataPanel id="events" title="Recent events" empty="No events yet.">
             <label className="panel-search">
               <Search size={16} aria-hidden="true" />
               <input
@@ -524,7 +525,7 @@ function App() {
             ))}
           </DataPanel>
 
-          <DataPanel title="Recent attempts" empty="No attempts yet.">
+          <DataPanel id="attempts" title="Recent attempts" empty="No attempts yet.">
             <div className="segmented" aria-label="Filter attempts">
               {(["all", "delivered", "failed", "retrying"] as const).map((filter) => (
                 <button
@@ -549,7 +550,7 @@ function App() {
             ))}
           </DataPanel>
 
-          <DataPanel title="Endpoints" empty="No endpoints configured.">
+          <DataPanel id="endpoints" title="Endpoints" empty="No endpoints configured.">
             <form className="inline-create" onSubmit={createEndpoint}>
               <input
                 aria-label="Endpoint HTTPS URL"
@@ -704,10 +705,10 @@ function App() {
   );
 }
 
-function DataPanel({ children, empty, title }: { children: React.ReactNode; empty: string; title: string }) {
+function DataPanel({ children, empty, id, title }: { children: React.ReactNode; empty: string; id?: string; title: string }) {
   const items = React.Children.toArray(children).filter(Boolean);
   return (
-    <section className="panel">
+    <section className="panel" id={id}>
       <div className="panel-header">
         <h2>{title}</h2>
       </div>
