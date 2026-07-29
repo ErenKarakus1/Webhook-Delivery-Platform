@@ -1,5 +1,5 @@
 import React, { FormEvent, useEffect, useMemo, useState } from "react";
-import { Activity, Bell, Clock, RefreshCcw, Server } from "lucide-react";
+import { Activity, AlertTriangle, Bell, Clock, RefreshCcw, Server } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -36,6 +36,17 @@ type Retry = {
   dueAt: string;
 };
 
+type DeadLetteredEvent = {
+  id: string;
+  eventId: string;
+  endpointId: string;
+  eventType: string;
+  attemptNumber: number;
+  statusCode: number | null;
+  errorMessage: string | null;
+  createdAt: string;
+};
+
 function App() {
   const [tenantId, setTenantId] = useState(() => localStorage.getItem("tenantId") ?? "");
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("apiKey") ?? "");
@@ -43,6 +54,7 @@ function App() {
   const [events, setEvents] = useState<Event[]>([]);
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [retries, setRetries] = useState<Retry[]>([]);
+  const [deadLetteredEvents, setDeadLetteredEvents] = useState<DeadLetteredEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,9 +66,10 @@ function App() {
       { label: "Events", value: events.length.toString(), icon: Bell },
       { label: "Success rate", value: successRate, icon: Activity },
       { label: "Pending retries", value: retries.length.toString(), icon: Clock },
+      { label: "Dead-lettered", value: deadLetteredEvents.length.toString(), icon: AlertTriangle },
       { label: "Active endpoints", value: endpoints.filter((endpoint) => endpoint.active).length.toString(), icon: Server },
     ];
-  }, [attempts, endpoints, events, retries]);
+  }, [attempts, deadLetteredEvents, endpoints, events, retries]);
 
   useEffect(() => {
     localStorage.setItem("tenantId", tenantId);
@@ -74,17 +87,19 @@ function App() {
 
     try {
       const headers = { "X-API-Key": apiKey };
-      const [endpointData, eventData, attemptData, retryData] = await Promise.all([
+      const [endpointData, eventData, attemptData, retryData, deadLetterData] = await Promise.all([
         request<Endpoint[]>(`/tenants/${tenantId}/endpoints`, headers),
         request<Event[]>(`/tenants/${tenantId}/events`, headers),
         request<Attempt[]>(`/tenants/${tenantId}/attempts`, headers),
         request<Retry[]>(`/tenants/${tenantId}/retries`, headers),
+        request<DeadLetteredEvent[]>(`/tenants/${tenantId}/dead-lettered-events`, headers),
       ]);
 
       setEndpoints(endpointData);
       setEvents(eventData);
       setAttempts(attemptData);
       setRetries(retryData);
+      setDeadLetteredEvents(deadLetterData);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not load dashboard data.");
     } finally {
@@ -192,6 +207,19 @@ function App() {
                   <span>{retry.eventId}</span>
                 </div>
                 <time>{formatDate(retry.dueAt)}</time>
+              </article>
+            ))}
+          </DataPanel>
+
+          <DataPanel title="Dead-lettered events" empty="No dead-lettered events.">
+            {deadLetteredEvents.slice(0, 5).map((event) => (
+              <article className="row attempt" key={event.id}>
+                <div>
+                  <strong>{event.eventType}</strong>
+                  <span>{event.errorMessage ?? event.eventId}</span>
+                </div>
+                <span className="status failed">{event.statusCode ?? "Failed"}</span>
+                <time>{formatDate(event.createdAt)}</time>
               </article>
             ))}
           </DataPanel>
