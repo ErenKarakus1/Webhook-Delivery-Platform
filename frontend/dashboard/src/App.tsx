@@ -13,6 +13,14 @@ type Endpoint = {
   createdAt: string;
 };
 
+type Subscription = {
+  id: string;
+  endpointId: string;
+  eventType: string;
+  active: boolean;
+  createdAt: string;
+};
+
 type Event = {
   id: string;
   eventType: string;
@@ -61,6 +69,7 @@ function App() {
   const [tenantId, setTenantId] = useState(() => localStorage.getItem("tenantId") ?? "");
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("apiKey") ?? "");
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [retries, setRetries] = useState<Retry[]>([]);
@@ -68,6 +77,8 @@ function App() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [selectedEventAttempts, setSelectedEventAttempts] = useState<Attempt[]>([]);
   const [endpointUrl, setEndpointUrl] = useState("");
+  const [subscriptionEndpointId, setSubscriptionEndpointId] = useState("");
+  const [subscriptionEventType, setSubscriptionEventType] = useState("order.created");
   const [eventType, setEventType] = useState("order.created");
   const [eventPayload, setEventPayload] = useState('{\n  "orderId": "ord_123",\n  "total": 49.99\n}');
   const [idempotencyKey, setIdempotencyKey] = useState("");
@@ -75,6 +86,8 @@ function App() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [endpointLoading, setEndpointLoading] = useState(false);
   const [endpointActionLoading, setEndpointActionLoading] = useState<string | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [subscriptionActionLoading, setSubscriptionActionLoading] = useState<string | null>(null);
   const [eventLoading, setEventLoading] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,8 +102,9 @@ function App() {
       { label: "Pending retries", value: retries.length.toString(), icon: Clock },
       { label: "Dead-lettered", value: deadLetteredEvents.length.toString(), icon: AlertTriangle },
       { label: "Active endpoints", value: endpoints.filter((endpoint) => endpoint.active).length.toString(), icon: Server },
+      { label: "Subscriptions", value: subscriptions.filter((subscription) => subscription.active).length.toString(), icon: Power },
     ];
-  }, [attempts, deadLetteredEvents, endpoints, events, retries]);
+  }, [attempts, deadLetteredEvents, endpoints, events, retries, subscriptions]);
 
   useEffect(() => {
     localStorage.setItem("tenantId", tenantId);
@@ -108,8 +122,9 @@ function App() {
 
     try {
       const headers = { "X-API-Key": apiKey };
-      const [endpointData, eventData, attemptData, retryData, deadLetterData] = await Promise.all([
+      const [endpointData, subscriptionData, eventData, attemptData, retryData, deadLetterData] = await Promise.all([
         request<Endpoint[]>(`/tenants/${tenantId}/endpoints`, headers),
+        request<Subscription[]>(`/tenants/${tenantId}/subscriptions`, headers),
         request<Event[]>(`/tenants/${tenantId}/events`, headers),
         request<Attempt[]>(`/tenants/${tenantId}/attempts`, headers),
         request<Retry[]>(`/tenants/${tenantId}/retries`, headers),
@@ -117,6 +132,8 @@ function App() {
       ]);
 
       setEndpoints(endpointData);
+      setSubscriptions(subscriptionData);
+      setSubscriptionEndpointId((current) => current || endpointData[0]?.id || "");
       setEvents(eventData);
       setAttempts(attemptData);
       setRetries(retryData);
@@ -179,6 +196,7 @@ function App() {
         body: JSON.stringify({ url: endpointUrl.trim() }),
       });
       setEndpoints((current) => [endpoint, ...current]);
+      setSubscriptionEndpointId((current) => current || endpoint.id);
       setEndpointUrl("");
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not create endpoint.");
@@ -226,6 +244,82 @@ function App() {
       setError(exception instanceof Error ? exception.message : "Could not delete endpoint.");
     } finally {
       setEndpointActionLoading(null);
+    }
+  }
+
+  async function createSubscription(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!tenantId || !apiKey) {
+      setError("Tenant ID and API key are required.");
+      return;
+    }
+    if (!subscriptionEndpointId) {
+      setError("Select an endpoint for the subscription.");
+      return;
+    }
+    if (!subscriptionEventType.trim()) {
+      setError("Subscription event type is required.");
+      return;
+    }
+
+    setSubscriptionLoading(true);
+    setError(null);
+
+    try {
+      const subscription = await request<Subscription>(`/tenants/${tenantId}/subscriptions`, { "X-API-Key": apiKey }, {
+        method: "POST",
+        body: JSON.stringify({
+          endpointId: subscriptionEndpointId,
+          eventType: subscriptionEventType.trim(),
+        }),
+      });
+      setSubscriptions((current) => [subscription, ...current]);
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Could not create subscription.");
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  }
+
+  async function setSubscriptionActive(subscription: Subscription, active: boolean) {
+    if (!tenantId || !apiKey) {
+      setError("Tenant ID and API key are required.");
+      return;
+    }
+
+    setSubscriptionActionLoading(subscription.id);
+    setError(null);
+
+    try {
+      const updatedSubscription = await request<Subscription>(
+        `/tenants/${tenantId}/subscriptions/${subscription.id}/${active ? "activate" : "deactivate"}`,
+        { "X-API-Key": apiKey },
+        { method: "PATCH" },
+      );
+      setSubscriptions((current) => current.map((item) => item.id === updatedSubscription.id ? updatedSubscription : item));
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Could not update subscription.");
+    } finally {
+      setSubscriptionActionLoading(null);
+    }
+  }
+
+  async function deleteSubscription(subscriptionId: string) {
+    if (!tenantId || !apiKey) {
+      setError("Tenant ID and API key are required.");
+      return;
+    }
+
+    setSubscriptionActionLoading(subscriptionId);
+    setError(null);
+
+    try {
+      await requestNoContent(`/tenants/${tenantId}/subscriptions/${subscriptionId}`, { "X-API-Key": apiKey }, { method: "DELETE" });
+      setSubscriptions((current) => current.filter((subscription) => subscription.id !== subscriptionId));
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Could not delete subscription.");
+    } finally {
+      setSubscriptionActionLoading(null);
     }
   }
 
@@ -452,6 +546,57 @@ function App() {
             ))}
           </DataPanel>
 
+          <DataPanel title="Subscriptions" empty="No subscriptions configured.">
+            <form className="inline-create subscription-create" onSubmit={createSubscription}>
+              <select
+                aria-label="Subscription endpoint"
+                value={subscriptionEndpointId}
+                onChange={(event) => setSubscriptionEndpointId(event.target.value)}
+              >
+                <option value="">Select endpoint</option>
+                {endpoints.map((endpoint) => (
+                  <option key={endpoint.id} value={endpoint.id}>{endpoint.url}</option>
+                ))}
+              </select>
+              <input
+                aria-label="Subscription event type"
+                placeholder="order.created"
+                value={subscriptionEventType}
+                onChange={(event) => setSubscriptionEventType(event.target.value)}
+              />
+              <button type="submit" disabled={subscriptionLoading}>Add</button>
+            </form>
+            {subscriptions.slice(0, 5).map((subscription) => (
+              <article className="row endpoint-row" key={subscription.id}>
+                <div>
+                  <strong>{subscription.active ? "Active" : "Inactive"} · {subscription.eventType}</strong>
+                  <span>{endpointLabel(subscription.endpointId, endpoints)}</span>
+                </div>
+                <div className="row-actions">
+                  <button
+                    aria-label={subscription.active ? "Deactivate subscription" : "Activate subscription"}
+                    className="icon-button"
+                    disabled={subscriptionActionLoading === subscription.id}
+                    onClick={() => void setSubscriptionActive(subscription, !subscription.active)}
+                    type="button"
+                  >
+                    <Power size={16} aria-hidden="true" />
+                  </button>
+                  <button
+                    aria-label="Delete subscription"
+                    className="icon-button danger"
+                    disabled={subscriptionActionLoading === subscription.id}
+                    onClick={() => void deleteSubscription(subscription.id)}
+                    type="button"
+                  >
+                    <Trash2 size={16} aria-hidden="true" />
+                  </button>
+                </div>
+                <time>{formatDate(subscription.createdAt)}</time>
+              </article>
+            ))}
+          </DataPanel>
+
           <DataPanel title="Retry queue" empty="No pending retries.">
             {retries.slice(0, 5).map((retry) => (
               <article className="row" key={retry.id}>
@@ -566,6 +711,10 @@ function attemptStatus(attempt: Attempt) {
     return "Failed";
   }
   return "Retrying";
+}
+
+function endpointLabel(endpointId: string, endpoints: Endpoint[]) {
+  return endpoints.find((endpoint) => endpoint.id === endpointId)?.url ?? endpointId;
 }
 
 function formatDate(value: string) {

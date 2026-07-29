@@ -66,6 +66,16 @@ input {
   width: 100%;
 }
 
+select {
+  border: 1px solid #cdd5df;
+  border-radius: 6px;
+  color: #17202a;
+  font: inherit;
+  min-height: 40px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
 textarea {
   border: 1px solid #cdd5df;
   border-radius: 6px;
@@ -264,6 +274,10 @@ h1 {
   border-bottom: 0;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   padding-bottom: 0;
+}
+
+.subscription-create {
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 220px) auto;
 }
 
 .event-create textarea {
