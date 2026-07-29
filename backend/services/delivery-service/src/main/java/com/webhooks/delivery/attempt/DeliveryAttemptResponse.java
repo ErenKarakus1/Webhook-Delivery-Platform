@@ -6,6 +6,7 @@ import java.util.UUID;
 public record DeliveryAttemptResponse(
         UUID id,
         UUID eventId,
+        UUID tenantId,
         UUID endpointId,
         int attemptNumber,
         Integer statusCode,
@@ -17,6 +18,7 @@ public record DeliveryAttemptResponse(
         return new DeliveryAttemptResponse(
                 attempt.getId(),
                 attempt.getEventId(),
+                attempt.getTenantId(),
                 attempt.getEndpointId(),
                 attempt.getAttemptNumber(),
                 attempt.getStatusCode(),

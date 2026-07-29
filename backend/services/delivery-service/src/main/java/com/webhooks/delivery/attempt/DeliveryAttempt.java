@@ -17,6 +17,9 @@ public class DeliveryAttempt {
     @Column(name = "event_id", nullable = false)
     private UUID eventId;
 
+    @Column(name = "tenant_id", nullable = false)
+    private UUID tenantId;
+
     @Column(name = "endpoint_id", nullable = false)
     private UUID endpointId;
 
@@ -40,6 +43,7 @@ public class DeliveryAttempt {
 
     public DeliveryAttempt(
             UUID eventId,
+            UUID tenantId,
             UUID endpointId,
             int attemptNumber,
             Integer statusCode,
@@ -48,6 +52,7 @@ public class DeliveryAttempt {
     ) {
         this.id = UUID.randomUUID();
         this.eventId = eventId;
+        this.tenantId = tenantId;
         this.endpointId = endpointId;
         this.attemptNumber = attemptNumber;
         this.statusCode = statusCode;
@@ -75,6 +80,10 @@ public class DeliveryAttempt {
 
     public UUID getEventId() {
         return eventId;
+    }
+
+    public UUID getTenantId() {
+        return tenantId;
     }
 
     public UUID getEndpointId() {

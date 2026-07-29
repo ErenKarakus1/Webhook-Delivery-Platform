@@ -3,6 +3,7 @@ package com.webhooks.delivery.attempt;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -14,22 +15,23 @@ public class DeliveryAttemptController {
         this.attemptRepository = attemptRepository;
     }
 
-    @GetMapping("/attempts")
+    @GetMapping("/tenants/{tenantId}/attempts")
     List<DeliveryAttemptResponse> listAttempts(
+            @PathVariable UUID tenantId,
             @RequestParam(required = false) UUID eventId,
             @RequestParam(required = false) UUID endpointId
     ) {
         if (eventId != null) {
-            return attemptRepository.findByEventIdOrderByAttemptNumberAsc(eventId).stream()
+            return attemptRepository.findByTenantIdAndEventIdOrderByAttemptNumberAsc(tenantId, eventId).stream()
                     .map(DeliveryAttemptResponse::from)
                     .toList();
         }
         if (endpointId != null) {
-            return attemptRepository.findByEndpointIdOrderByAttemptedAtDesc(endpointId).stream()
+            return attemptRepository.findByTenantIdAndEndpointIdOrderByAttemptedAtDesc(tenantId, endpointId).stream()
                     .map(DeliveryAttemptResponse::from)
                     .toList();
         }
-        return attemptRepository.findAll().stream()
+        return attemptRepository.findByTenantIdOrderByAttemptedAtDesc(tenantId).stream()
                 .map(DeliveryAttemptResponse::from)
                 .toList();
     }

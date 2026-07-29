@@ -20,6 +20,9 @@ public class RetryQueueEntry {
     @Column(name = "event_id", nullable = false)
     private UUID eventId;
 
+    @Column(name = "tenant_id", nullable = false)
+    private UUID tenantId;
+
     @Column(name = "endpoint_id", nullable = false)
     private UUID endpointId;
 
@@ -42,6 +45,7 @@ public class RetryQueueEntry {
     public RetryQueueEntry(DeliveryJob payload, Instant dueAt) {
         this.id = UUID.randomUUID();
         this.eventId = payload.eventId();
+        this.tenantId = payload.tenantId();
         this.endpointId = payload.endpointId();
         this.attemptNumber = payload.attemptNumber();
         this.dueAt = dueAt;

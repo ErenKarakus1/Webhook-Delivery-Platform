@@ -35,27 +35,13 @@ public class ProxyController {
         if (path.matches("^/tenants/[^/]+/events.*$")) {
             return proxy(routes.eventIngestion().baseUrl(), request, body);
         }
+        if (path.matches("^/tenants/[^/]+/attempts.*$")) {
+            return proxy(routes.delivery().baseUrl(), request, body);
+        }
+        if (path.matches("^/tenants/[^/]+/retries.*$")) {
+            return proxy(routes.scheduler().baseUrl(), request, body);
+        }
         return proxy(routes.webhookManagement().baseUrl(), request, body);
-    }
-
-    @RequestMapping("/attempts/**")
-    ResponseEntity<byte[]> proxyAttempts(HttpServletRequest request, @RequestBody(required = false) byte[] body) {
-        return proxy(routes.delivery().baseUrl(), request, body);
-    }
-
-    @RequestMapping("/attempts")
-    ResponseEntity<byte[]> proxyAttemptsRoot(HttpServletRequest request, @RequestBody(required = false) byte[] body) {
-        return proxy(routes.delivery().baseUrl(), request, body);
-    }
-
-    @RequestMapping("/retries/**")
-    ResponseEntity<byte[]> proxyRetries(HttpServletRequest request, @RequestBody(required = false) byte[] body) {
-        return proxy(routes.scheduler().baseUrl(), request, body);
-    }
-
-    @RequestMapping("/retries")
-    ResponseEntity<byte[]> proxyRetriesRoot(HttpServletRequest request, @RequestBody(required = false) byte[] body) {
-        return proxy(routes.scheduler().baseUrl(), request, body);
     }
 
     private ResponseEntity<byte[]> proxy(String baseUrl, HttpServletRequest request, byte[] body) {

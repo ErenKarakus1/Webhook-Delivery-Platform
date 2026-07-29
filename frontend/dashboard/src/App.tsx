@@ -77,8 +77,8 @@ function App() {
       const [endpointData, eventData, attemptData, retryData] = await Promise.all([
         request<Endpoint[]>(`/tenants/${tenantId}/endpoints`, headers),
         request<Event[]>(`/tenants/${tenantId}/events`, headers),
-        request<Attempt[]>("/attempts", headers),
-        request<Retry[]>("/retries", headers),
+        request<Attempt[]>(`/tenants/${tenantId}/attempts`, headers),
+        request<Retry[]>(`/tenants/${tenantId}/retries`, headers),
       ]);
 
       setEndpoints(endpointData);

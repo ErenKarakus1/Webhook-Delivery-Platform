@@ -33,6 +33,7 @@ public class DeliveryJobConsumer {
         DeliveryResult result = httpClient.deliver(job);
         attemptRepository.save(new DeliveryAttempt(
                 job.eventId(),
+                job.tenantId(),
                 job.endpointId(),
                 job.attemptNumber(),
                 result.statusCode(),

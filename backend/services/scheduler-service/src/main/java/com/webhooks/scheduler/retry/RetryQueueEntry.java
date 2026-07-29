@@ -19,6 +19,9 @@ public class RetryQueueEntry {
     @Column(name = "event_id", nullable = false)
     private UUID eventId;
 
+    @Column(name = "tenant_id", nullable = false)
+    private UUID tenantId;
+
     @Column(name = "endpoint_id", nullable = false)
     private UUID endpointId;
 
@@ -45,6 +48,10 @@ public class RetryQueueEntry {
 
     public UUID getEventId() {
         return eventId;
+    }
+
+    public UUID getTenantId() {
+        return tenantId;
     }
 
     public UUID getEndpointId() {

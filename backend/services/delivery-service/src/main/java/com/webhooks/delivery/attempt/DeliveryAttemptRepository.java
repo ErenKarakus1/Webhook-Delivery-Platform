@@ -5,7 +5,9 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface DeliveryAttemptRepository extends JpaRepository<DeliveryAttempt, UUID> {
-    List<DeliveryAttempt> findByEventIdOrderByAttemptNumberAsc(UUID eventId);
+    List<DeliveryAttempt> findByTenantIdOrderByAttemptedAtDesc(UUID tenantId);
 
-    List<DeliveryAttempt> findByEndpointIdOrderByAttemptedAtDesc(UUID endpointId);
+    List<DeliveryAttempt> findByTenantIdAndEventIdOrderByAttemptNumberAsc(UUID tenantId, UUID eventId);
+
+    List<DeliveryAttempt> findByTenantIdAndEndpointIdOrderByAttemptedAtDesc(UUID tenantId, UUID endpointId);
 }

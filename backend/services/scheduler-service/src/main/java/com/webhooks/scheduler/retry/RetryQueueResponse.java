@@ -6,6 +6,7 @@ import java.util.UUID;
 public record RetryQueueResponse(
         UUID id,
         UUID eventId,
+        UUID tenantId,
         UUID endpointId,
         int attemptNumber,
         Instant dueAt
@@ -14,6 +15,7 @@ public record RetryQueueResponse(
         return new RetryQueueResponse(
                 entry.getId(),
                 entry.getEventId(),
+                entry.getTenantId(),
                 entry.getEndpointId(),
                 entry.getAttemptNumber(),
                 entry.getDueAt()
