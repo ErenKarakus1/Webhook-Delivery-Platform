@@ -4,6 +4,13 @@ server:
 spring:
   application:
     name: api-gateway
+  datasource:
+    url: jdbc:postgresql://localhost:5432/webhook_platform
+    username: webhook
+    password: webhook
+  jpa:
+    hibernate:
+      ddl-auto: validate
 
 services:
   webhook-management:
