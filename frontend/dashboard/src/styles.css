@@ -268,11 +268,20 @@ label span {
 }
 
 .row span,
-.compact-row span,
+.compact-row span {
+  color: #667085;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .selected-event code {
   color: #667085;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.row time,
+.compact-row time {
   white-space: nowrap;
 }
 
@@ -380,6 +389,7 @@ label span {
 }
 
 .attempt {
+  align-items: start;
   grid-template-columns: minmax(0, 1fr) auto auto;
 }
 
@@ -401,6 +411,10 @@ label span {
   color: #667085;
   font-size: 13px;
   font-weight: 700;
+}
+
+.selected-event strong {
+  overflow-wrap: anywhere;
 }
 
 .empty {
