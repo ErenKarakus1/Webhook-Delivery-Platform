@@ -266,6 +266,7 @@ label span {
 
 .events-scroll,
 .attempts-scroll {
+  flex: 0 0 auto;
   height: clamp(360px, 52vh, 540px);
 }
 
