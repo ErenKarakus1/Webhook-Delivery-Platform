@@ -886,7 +886,7 @@ function App() {
                 <div>
                   <strong>Attempt {retry.attemptNumber}</strong>
                   <small>{endpointLabel(retry.endpointId, endpoints)}</small>
-                  <span>Event {shortId(retry.eventId)} / Endpoint {shortId(retry.endpointId)}</span>
+                  <span>{retryDueLabel(retry.dueAt)} / Event {shortId(retry.eventId)} / Endpoint {shortId(retry.endpointId)}</span>
                 </div>
                 <div className="row-actions">
                   <time>{formatDate(retry.dueAt)}</time>
@@ -1103,6 +1103,26 @@ function endpointLabel(endpointId: string, endpoints: Endpoint[]) {
 
 function shortId(value: string) {
   return value.slice(0, 8);
+}
+
+function retryDueLabel(value: string) {
+  const milliseconds = new Date(value).getTime() - Date.now();
+  if (milliseconds <= 0) {
+    return "Retry due now";
+  }
+
+  const seconds = Math.ceil(milliseconds / 1000);
+  if (seconds < 60) {
+    return `Retries in ${seconds}s`;
+  }
+
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes < 60) {
+    return `Retries in ${minutes}m`;
+  }
+
+  const hours = Math.ceil(minutes / 60);
+  return `Retries in ${hours}h`;
 }
 
 function formatDate(value: string) {
