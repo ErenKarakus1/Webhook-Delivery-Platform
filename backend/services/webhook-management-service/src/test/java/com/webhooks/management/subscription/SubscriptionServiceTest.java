@@ -164,6 +164,6 @@ class SubscriptionServiceTest {
     }
 
     private EndpointResponse endpointResponse(UUID tenantId, UUID endpointId) {
-        return new EndpointResponse(endpointId, tenantId, "https://example.com/webhooks", true, null);
+        return new EndpointResponse(endpointId, tenantId, "https://example.com/webhooks", "secret", true, null);
     }
 }

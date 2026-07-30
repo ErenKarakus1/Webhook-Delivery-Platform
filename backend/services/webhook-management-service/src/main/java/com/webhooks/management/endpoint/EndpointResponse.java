@@ -7,6 +7,7 @@ public record EndpointResponse(
         UUID id,
         UUID tenantId,
         String url,
+        String secret,
         boolean active,
         Instant createdAt
 ) {
@@ -15,6 +16,7 @@ public record EndpointResponse(
                 endpoint.getId(),
                 endpoint.getTenantId(),
                 endpoint.getUrl(),
+                endpoint.getSecret(),
                 endpoint.isActive(),
                 endpoint.getCreatedAt()
         );

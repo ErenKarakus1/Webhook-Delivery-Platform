@@ -9,6 +9,7 @@ const ADMIN_API_KEY = import.meta.env.VITE_ADMIN_API_KEY ?? "local-admin-key";
 type Endpoint = {
   id: string;
   url: string;
+  secret: string;
   active: boolean;
   createdAt: string;
 };
@@ -552,6 +553,10 @@ function App() {
                       <strong>{endpoint.active ? "Active" : "Inactive"}</strong>
                       <small>{endpoint.active ? "Receives matching events" : "Kept for history; no new deliveries"}</small>
                       <span>{endpoint.url}</span>
+                      <details className="secret-detail">
+                        <summary>Show signing secret</summary>
+                        <code>{endpoint.secret}</code>
+                      </details>
                     </div>
                     <button
                       aria-label={endpoint.active ? "Deactivate endpoint" : "Activate endpoint"}

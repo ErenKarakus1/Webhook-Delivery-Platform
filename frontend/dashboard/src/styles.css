@@ -266,6 +266,28 @@ label span {
   font-size: 13px;
 }
 
+.secret-detail {
+  color: #475467;
+  font-size: 13px;
+}
+
+.secret-detail summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.secret-detail code {
+  background: #f8fafc;
+  border: 1px solid #e3e8ef;
+  border-radius: 6px;
+  color: #17202a;
+  display: block;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+  padding: 8px;
+  white-space: normal;
+}
+
 .row-button {
   background: transparent;
   border-radius: 0;
