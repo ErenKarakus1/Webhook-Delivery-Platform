@@ -1,5 +1,5 @@
 import React, { FormEvent, useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, Bell, Clock, Power, RefreshCcw } from "lucide-react";
+import { Activity, AlertTriangle, Bell, Clock, RefreshCcw } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -91,6 +91,7 @@ function App() {
   const [eventLoading, setEventLoading] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sendResult, setSendResult] = useState<string | null>(null);
 
   const stats = useMemo(() => {
     const delivered = attempts.filter((attempt) => attempt.statusCode && attempt.statusCode >= 200 && attempt.statusCode < 300);
@@ -187,13 +188,19 @@ function App() {
       return;
     }
 
+    const normalizedUrl = endpointUrl.trim();
+    if (endpoints.some((endpoint) => endpoint.url.toLowerCase() === normalizedUrl.toLowerCase())) {
+      setError("That endpoint URL already exists. Use the existing endpoint or reactivate it.");
+      return;
+    }
+
     setEndpointLoading(true);
     setError(null);
 
     try {
       const endpoint = await request<Endpoint>(`/tenants/${tenantId}/endpoints`, { "X-API-Key": apiKey }, {
         method: "POST",
-        body: JSON.stringify({ url: endpointUrl.trim() }),
+        body: JSON.stringify({ url: normalizedUrl }),
       });
       setEndpoints((current) => [endpoint, ...current]);
       setSubscriptionEndpointId((current) => current || endpoint.id);
@@ -243,6 +250,15 @@ function App() {
       return;
     }
 
+    const normalizedEventType = subscriptionEventType.trim();
+    if (subscriptions.some((subscription) => (
+      subscription.endpointId === subscriptionEndpointId
+      && subscription.eventType.toLowerCase() === normalizedEventType.toLowerCase()
+    ))) {
+      setError("That endpoint already has a subscription for this event type. Use the existing subscription or reactivate it.");
+      return;
+    }
+
     setSubscriptionLoading(true);
     setError(null);
 
@@ -251,7 +267,7 @@ function App() {
         method: "POST",
         body: JSON.stringify({
           endpointId: subscriptionEndpointId,
-          eventType: subscriptionEventType.trim(),
+          eventType: normalizedEventType,
         }),
       });
       setSubscriptions((current) => [subscription, ...current]);
@@ -306,6 +322,7 @@ function App() {
 
     setEventLoading(true);
     setError(null);
+    setSendResult(null);
 
     try {
       const headers: Record<string, string> = { "X-API-Key": apiKey };
@@ -325,6 +342,7 @@ function App() {
       setSelectedEvent(createdEvent);
       setSelectedEventAttempts([]);
       setIdempotencyKey("");
+      setSendResult(deliveryJobMessage(response.deliveryJobsPublished, response.duplicate));
       await waitForEventAttempts(createdEvent.id);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not ingest event.");
@@ -428,6 +446,7 @@ function App() {
               <textarea value={eventPayload} onChange={(event) => setEventPayload(event.target.value)} spellCheck={false} />
             </label>
             <button type="submit" disabled={eventLoading}>Send event</button>
+            {sendResult && <p className="result-message">{sendResult}</p>}
           </form>
         </section>
 
@@ -492,16 +511,17 @@ function App() {
                   <article className="compact-row" key={endpoint.id}>
                     <div>
                       <strong>{endpoint.active ? "Active" : "Inactive"}</strong>
+                      <small>{endpoint.active ? "Receives matching events" : "Kept for history; no new deliveries"}</small>
                       <span>{endpoint.url}</span>
                     </div>
                     <button
                       aria-label={endpoint.active ? "Deactivate endpoint" : "Activate endpoint"}
-                      className="icon-button"
+                      className="secondary compact-action"
                       disabled={endpointActionLoading === endpoint.id}
                       onClick={() => void setEndpointActive(endpoint, !endpoint.active)}
                       type="button"
                     >
-                      <Power size={16} aria-hidden="true" />
+                      {endpoint.active ? "Deactivate" : "Activate"}
                     </button>
                   </article>
                 ))}
@@ -532,16 +552,17 @@ function App() {
                   <article className="compact-row" key={subscription.id}>
                     <div>
                       <strong>{subscription.active ? "Active" : "Inactive"} / {subscription.eventType}</strong>
+                      <small>{subscription.active ? "Publishes delivery jobs" : "Kept for history; no new jobs"}</small>
                       <span>{endpointLabel(subscription.endpointId, endpoints)}</span>
                     </div>
                     <button
                       aria-label={subscription.active ? "Deactivate subscription" : "Activate subscription"}
-                      className="icon-button"
+                      className="secondary compact-action"
                       disabled={subscriptionActionLoading === subscription.id}
                       onClick={() => void setSubscriptionActive(subscription, !subscription.active)}
                       type="button"
                     >
-                      <Power size={16} aria-hidden="true" />
+                      {subscription.active ? "Deactivate" : "Activate"}
                     </button>
                   </article>
                 ))}
@@ -638,6 +659,19 @@ function mergeAttempts(newAttempts: Attempt[], currentAttempts: Attempt[]) {
   const byId = new Map<string, Attempt>();
   [...newAttempts, ...currentAttempts].forEach((attempt) => byId.set(attempt.id, attempt));
   return [...byId.values()].sort((left, right) => new Date(right.attemptedAt).getTime() - new Date(left.attemptedAt).getTime());
+}
+
+function deliveryJobMessage(deliveryJobsPublished: number, duplicate: boolean) {
+  if (duplicate) {
+    return "Duplicate event ignored. No new delivery jobs were published.";
+  }
+  if (deliveryJobsPublished === 0) {
+    return "Event saved, but no active subscription matched this event type.";
+  }
+  if (deliveryJobsPublished === 1) {
+    return "Event sent. 1 delivery job published.";
+  }
+  return `Event sent. ${deliveryJobsPublished} delivery jobs published.`;
 }
 
 function endpointLabel(endpointId: string, endpoints: Endpoint[]) {
