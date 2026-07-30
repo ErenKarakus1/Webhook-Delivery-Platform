@@ -1071,7 +1071,9 @@ function Queue({ children, empty, title }: { children: React.ReactNode; empty: s
   return (
     <section className="queue">
       <h2>{title}</h2>
-      <SimpleList empty={empty}>{children}</SimpleList>
+      <div className="queue-scroll">
+        <SimpleList empty={empty}>{children}</SimpleList>
+      </div>
     </section>
   );
 }
@@ -1166,7 +1168,7 @@ function endpointApiErrorMessage(exception: unknown) {
     return exception instanceof Error ? exception.message : "Could not create endpoint.";
   }
   if (exception.status === 400 && exception.message === "400") {
-    return "Enter a valid HTTPS URL.";
+    return "Endpoint host could not be verified. Use a real, reachable HTTPS domain.";
   }
   return exception.message;
 }
