@@ -393,6 +393,16 @@ label span {
   background: #f8fafc;
 }
 
+.selected-row {
+  background: #f8fafc;
+}
+
+.endpoint-select {
+  display: grid;
+  gap: 3px;
+  padding: 0;
+}
+
 .attempt {
   align-items: start;
   grid-template-columns: minmax(0, 1fr) auto auto;

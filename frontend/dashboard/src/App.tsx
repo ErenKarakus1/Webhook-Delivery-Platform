@@ -112,6 +112,7 @@ function App() {
   const [retries, setRetries] = useState<Retry[]>([]);
   const [deadLetteredEvents, setDeadLetteredEvents] = useState<DeadLetteredEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null);
   const [selectedEventAttempts, setSelectedEventAttempts] = useState<Attempt[]>([]);
   const [eventTypeFilter, setEventTypeFilter] = useState("");
   const [attemptStatusFilter, setAttemptStatusFilter] = useState<AttemptStatusFilter>("all");
@@ -160,11 +161,13 @@ function App() {
   }, [eventTypeFilter, events]);
   const visibleEvents = filteredEvents.slice(0, 8);
 
-  const baseAttempts = selectedEvent ? selectedEventAttempts : attempts;
+  const baseAttempts = selectedEndpoint
+    ? attempts.filter((attempt) => attempt.endpointId === selectedEndpoint.id)
+    : selectedEvent ? selectedEventAttempts : attempts;
   const filteredAttempts = useMemo(() => (
     baseAttempts.filter((attempt) => attemptStatusFilter === "all" || attemptStatus(attempt).toLowerCase() === attemptStatusFilter)
   ), [attemptStatusFilter, baseAttempts]);
-  const recentAttempts = selectedEvent ? filteredAttempts : filteredAttempts.slice(0, 6);
+  const recentAttempts = selectedEvent || selectedEndpoint ? filteredAttempts : filteredAttempts.slice(0, 6);
   const deliverySummary = useMemo(() => {
     const delivered = recentAttempts.filter((attempt) => attemptStatus(attempt) === "Delivered").length;
     const failed = recentAttempts.filter((attempt) => attemptStatus(attempt) === "Failed").length;
@@ -181,7 +184,7 @@ function App() {
   useEffect(() => {
     localStorage.setItem("tenantId", tenantId);
     localStorage.setItem("apiKey", apiKey);
-  }, [apiKey, tenantId]);
+  }, [apiKey, selectedEndpoint, tenantId]);
 
   useEffect(() => {
     const savedTenantId = localStorage.getItem("tenantId");
@@ -234,12 +237,19 @@ function App() {
       setRetries(retryData);
       setDeadLetteredEvents(deadLetterData);
       setSelectedEvent((current) => {
+        if (selectedEndpoint) {
+          setSelectedEventAttempts([]);
+          return null;
+        }
         const nextSelectedEvent = current
           ? eventData.find((event) => event.id === current.id) ?? eventData[0] ?? null
           : eventData[0] ?? null;
         setSelectedEventAttempts(nextSelectedEvent ? attemptData.filter((attempt) => attempt.eventId === nextSelectedEvent.id) : []);
         return nextSelectedEvent;
       });
+      setSelectedEndpoint((current) => (
+        current ? endpointData.find((endpoint) => endpoint.id === current.id) ?? null : null
+      ));
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not load dashboard data.");
     } finally {
@@ -265,6 +275,7 @@ function App() {
         request<Attempt[]>(`/tenants/${tenantId}/attempts?eventId=${eventId}`, headers),
       ]);
       setSelectedEvent(eventData);
+      setSelectedEndpoint(null);
       setSelectedEventAttempts(attemptData);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not load event detail.");
@@ -276,6 +287,12 @@ function App() {
   function submitCredentials(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void loadDashboard();
+  }
+
+  function selectEndpoint(endpoint: Endpoint) {
+    setSelectedEndpoint(endpoint);
+    setSelectedEvent(null);
+    setSelectedEventAttempts([]);
   }
 
   async function createEndpoint(event: FormEvent<HTMLFormElement>) {
@@ -577,6 +594,7 @@ function App() {
       };
       setEvents((current) => [createdEvent, ...current.filter((item) => item.id !== createdEvent.id)]);
       setSelectedEvent(createdEvent);
+      setSelectedEndpoint(null);
       setSelectedEventAttempts([]);
       setIdempotencyKey("");
       setSendResult(deliveryJobMessage(response.deliveryJobsPublished, response.duplicate));
@@ -722,7 +740,7 @@ function App() {
         </section>
 
         <section className="panel">
-          <PanelHeader title={selectedEvent ? "Selected delivery" : "Delivery attempts"} meta={detailLoading ? "Loading" : `${recentAttempts.length} shown`} />
+          <PanelHeader title={deliveryPanelTitle(selectedEvent, selectedEndpoint)} meta={detailLoading ? "Loading" : `${recentAttempts.length} shown`} />
           {selectedEvent && (
             <div className="selected-event">
               <div>
@@ -759,6 +777,26 @@ function App() {
               </pre>
             </details>
           )}
+          {selectedEndpoint && (
+            <div className="selected-event">
+              <div>
+                <span>Endpoint</span>
+                <strong>{selectedEndpoint.active ? "Active" : "Inactive"}</strong>
+              </div>
+              <div>
+                <span>Endpoint ID</span>
+                <code>{selectedEndpoint.id}</code>
+              </div>
+              <div>
+                <span>Recent attempts</span>
+                <strong>{recentAttempts.length}</strong>
+              </div>
+              <div>
+                <span>URL</span>
+                <strong>{selectedEndpoint.url}</strong>
+              </div>
+            </div>
+          )}
           <div className="panel-controls">
             <select
               aria-label="Filter attempts by status"
@@ -784,7 +822,7 @@ function App() {
               </article>
             )) : (
               <p className="empty">
-                {selectedEvent ? "No matching active subscription for this event type, or delivery has not started yet." : "No delivery attempts yet."}
+                {deliveryEmptyMessage(selectedEvent, selectedEndpoint)}
               </p>
             )}
           </div>
@@ -807,11 +845,13 @@ function App() {
               {endpointError && <p className="form-error" role="alert">{endpointError}</p>}
               <SimpleList empty="No endpoints configured.">
                 {endpoints.slice(0, 4).map((endpoint) => (
-                  <article className="compact-row" key={endpoint.id}>
+                  <article className={`compact-row ${selectedEndpoint?.id === endpoint.id ? "selected-row" : ""}`} key={endpoint.id}>
                     <div>
-                      <strong>{endpoint.active ? "Active" : "Inactive"}</strong>
-                      <small>{endpoint.active ? "Receives matching events" : "Kept for history; no new deliveries"}</small>
-                      <span>{endpoint.url}</span>
+                      <button className="row-button endpoint-select" onClick={() => selectEndpoint(endpoint)} type="button">
+                        <strong>{endpoint.active ? "Active" : "Inactive"}</strong>
+                        <small>{endpoint.active ? "Receives matching events" : "Kept for history; no new deliveries"}</small>
+                        <span>{endpoint.url}</span>
+                      </button>
                       <details className="secret-detail">
                         <summary>Show signing secret</summary>
                         <code>{endpoint.secret}</code>
@@ -996,6 +1036,20 @@ function PanelHeader({ meta, title }: { meta?: string; title: string }) {
       {meta && <span>{meta}</span>}
     </div>
   );
+}
+
+function deliveryPanelTitle(selectedEvent: Event | null, selectedEndpoint: Endpoint | null) {
+  if (selectedEndpoint) {
+    return "Endpoint delivery history";
+  }
+  return selectedEvent ? "Selected delivery" : "Delivery attempts";
+}
+
+function deliveryEmptyMessage(selectedEvent: Event | null, selectedEndpoint: Endpoint | null) {
+  if (selectedEndpoint) {
+    return "No delivery attempts for this endpoint yet.";
+  }
+  return selectedEvent ? "No matching active subscription for this event type, or delivery has not started yet." : "No delivery attempts yet.";
 }
 
 function SimpleList({ children, empty }: { children: React.ReactNode; empty: string }) {
