@@ -146,7 +146,7 @@ function App() {
 
     return [
       { label: "Events", value: events.length.toString(), icon: Bell },
-      { label: "Success", value: successRate, icon: Activity },
+      { label: "Success rate", value: successRate, icon: Activity },
       { label: "Attempts", value: attempts.length.toString(), icon: Route },
       { label: "Endpoints", value: endpoints.filter((endpoint) => endpoint.active).length.toString(), icon: Globe },
       { label: "Subscriptions", value: subscriptions.filter((subscription) => subscription.active).length.toString(), icon: Activity },
@@ -683,7 +683,7 @@ function App() {
       <header className="topbar">
         <div>
           <p className="eyebrow">Webhook Delivery Platform</p>
-          <h1>Test a webhook delivery.</h1>
+          <h1>Webhook operations dashboard</h1>
         </div>
         <button type="button" onClick={() => void loadDashboard()} disabled={loading}>
           <RefreshCcw size={16} aria-hidden="true" />
@@ -700,9 +700,9 @@ function App() {
           <span>API key</span>
           <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} />
         </label>
-        <button type="submit" disabled={loading}>Connect</button>
+        <button type="submit" disabled={loading}>Load dashboard</button>
         <button type="button" className="secondary" onClick={createTenantAndApiKey} disabled={setupLoading}>
-          Create tenant
+          New tenant
         </button>
       </form>
 
@@ -724,7 +724,7 @@ function App() {
 
       <section className="workspace">
         <section className="panel send-panel">
-          <PanelHeader title="Send event" meta="Demo payload" />
+          <PanelHeader title="Send event" meta="Publish test event" />
           <form className="stack-form" onSubmit={ingestEvent}>
             <label>
               <span>Event type</span>
@@ -735,7 +735,7 @@ function App() {
               <input placeholder="Optional" value={idempotencyKey} onChange={(event) => setIdempotencyKey(event.target.value)} />
             </label>
             <label>
-              <span>Payload</span>
+              <span>JSON payload</span>
               <textarea value={eventPayload} onChange={(event) => setEventPayload(event.target.value)} spellCheck={false} />
             </label>
             <button type="submit" disabled={eventLoading}>Send event</button>
@@ -745,7 +745,7 @@ function App() {
         </section>
 
         <section className="panel">
-          <PanelHeader title="Recent events" meta={`${events.length} total`} />
+          <PanelHeader title="Events" meta={`${events.length} total`} />
           <div className="panel-controls">
             <input
               aria-label="Filter events by type"
@@ -851,7 +851,7 @@ function App() {
                 <div>
                   <strong>{attemptStatus(attempt)} to {endpointLabel(attempt.endpointId, endpoints)}</strong>
                   <small>Attempt {attempt.attemptNumber}</small>
-                  <span>{attemptDetail(attempt)} / Endpoint {shortId(attempt.endpointId)}</span>
+                  <span>{attemptDetail(attempt)} / endpoint {shortId(attempt.endpointId)}</span>
                   {attemptExtraDetail(attempt) && <span>{attemptExtraDetail(attempt)}</span>}
                 </div>
                 <span className={`status ${attemptStatus(attempt).toLowerCase()}`}>{attemptStatus(attempt)}</span>
@@ -866,7 +866,7 @@ function App() {
         </section>
 
         <section className="panel setup-panel">
-          <PanelHeader title="Setup" meta={`${endpoints.length} endpoints, ${subscriptions.length} subscriptions`} />
+          <PanelHeader title="Configuration" meta={`${endpoints.length} endpoints, ${subscriptions.length} subscriptions`} />
           <div className="setup-grid">
             <div>
               <h2>Endpoint</h2>
@@ -877,7 +877,7 @@ function App() {
                   value={endpointUrl}
                   onChange={(event) => setEndpointUrl(event.target.value)}
                 />
-                <button type="submit" disabled={endpointLoading}>Add</button>
+                <button type="submit" disabled={endpointLoading}>Add endpoint</button>
               </form>
               {endpointError && <p className="form-error" role="alert">{endpointError}</p>}
               <SimpleList empty="No endpoints configured.">
@@ -964,7 +964,7 @@ function App() {
                   value={subscriptionEventType}
                   onChange={(event) => setSubscriptionEventType(event.target.value)}
                 />
-                <button type="submit" disabled={subscriptionLoading}>Add</button>
+                <button type="submit" disabled={subscriptionLoading}>Add subscription</button>
               </form>
               {subscriptionError && <p className="form-error" role="alert">{subscriptionError}</p>}
               <SimpleList empty="No subscriptions configured.">
@@ -1004,7 +1004,7 @@ function App() {
       </section>
 
       <details className="advanced">
-        <summary>Advanced queues</summary>
+        <summary>Retry and dead-letter queues</summary>
         <div className="advanced-grid">
           <Queue title="Retry queue" empty="No pending retries.">
             {retryError && <p className="form-error queue-error" role="alert">{retryError}</p>}
