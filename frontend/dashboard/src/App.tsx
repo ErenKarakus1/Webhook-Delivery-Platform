@@ -325,10 +325,25 @@ function App() {
       setSelectedEvent(createdEvent);
       setSelectedEventAttempts([]);
       setIdempotencyKey("");
+      await waitForEventAttempts(createdEvent.id);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not ingest event.");
     } finally {
       setEventLoading(false);
+    }
+  }
+
+  async function waitForEventAttempts(eventId: string) {
+    const headers = { "X-API-Key": apiKey };
+
+    for (let index = 0; index < 6; index += 1) {
+      await delay(index === 0 ? 500 : 800);
+      const attemptData = await request<Attempt[]>(`/tenants/${tenantId}/attempts?eventId=${eventId}`, headers);
+      if (attemptData.length > 0) {
+        setSelectedEventAttempts(attemptData);
+        setAttempts((current) => mergeAttempts(attemptData, current));
+        return;
+      }
     }
   }
 
@@ -613,6 +628,16 @@ function attemptStatus(attempt: Attempt) {
     return "Failed";
   }
   return "Retrying";
+}
+
+function delay(milliseconds: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+function mergeAttempts(newAttempts: Attempt[], currentAttempts: Attempt[]) {
+  const byId = new Map<string, Attempt>();
+  [...newAttempts, ...currentAttempts].forEach((attempt) => byId.set(attempt.id, attempt));
+  return [...byId.values()].sort((left, right) => new Date(right.attemptedAt).getTime() - new Date(left.attemptedAt).getTime());
 }
 
 function endpointLabel(endpointId: string, endpoints: Endpoint[]) {
