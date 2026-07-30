@@ -58,7 +58,7 @@ flowchart LR
 
 The dashboard talks to the API gateway. The gateway authenticates requests, applies rate limiting, and routes tenant APIs to the correct Spring service. Events are stored by the ingestion service and published to Kafka as delivery jobs. The delivery service consumes jobs, signs outbound webhook requests, records attempts, and schedules retries. The scheduler republishes due retries. Exhausted deliveries are stored in the dead-letter queue and can be replayed from the dashboard.
 
-## Getting Started
+## Demo Walkthrough
 
 Start the full local stack:
 
@@ -66,47 +66,35 @@ Start the full local stack:
 docker compose up -d --build
 ```
 
-The dashboard starts on `http://localhost:3000`.
+The Compose demo starts PostgreSQL, Flyway, Redis, Kafka, all Spring services, and the React dashboard.
+
+Open:
+
+```text
+Dashboard: http://localhost:3000
+API gateway: http://localhost:8080
+```
+
+Check the gateway health endpoint:
 
 ```bash
 curl http://localhost:8080/actuator/health
 ```
 
-## Docker Demo
+Create a tenant from the dashboard, or load repeatable demo data:
 
 ```bash
-docker compose up -d --build
+docker compose --profile seed up seed-demo
 ```
 
-The Compose demo starts PostgreSQL, Flyway, Redis, Kafka, all Spring services, and the React dashboard.
-
-Open the dashboard:
+Demo dashboard credentials:
 
 ```text
-http://localhost:3000
+Tenant ID: 11111111-1111-1111-1111-111111111111
+API key: demo-api-key
 ```
 
-Default API gateway:
-
-```text
-http://localhost:8080
-```
-
-## Demo Walkthrough
-
-Start the platform:
-
-```bash
-docker compose up -d --build
-```
-
-Open the dashboard:
-
-```text
-http://localhost:3000
-```
-
-Create a tenant from the dashboard, then:
+Then:
 
 ```text
 1. Add a reachable HTTPS webhook endpoint.
@@ -122,55 +110,22 @@ Run the smoke test:
 node scripts/smoke-test.mjs
 ```
 
+Use a custom webhook URL for the smoke test:
+
+```bash
+WEBHOOK_URL="https://example.com/webhooks" node scripts/smoke-test.mjs
+```
+
+PowerShell:
+
+```powershell
+$env:WEBHOOK_URL = "https://example.com/webhooks"
+node scripts/smoke-test.mjs
+```
+
 Stop the demo:
 
 ```bash
-docker compose down
-```
-
-## PowerShell Demo
-
-Start the platform:
-
-```powershell
-docker compose up -d --build
-```
-
-Check the gateway health endpoint:
-
-```powershell
-Invoke-RestMethod http://localhost:8080/actuator/health
-```
-
-Run the smoke test:
-
-```powershell
-node scripts/smoke-test.mjs
-```
-
-Use a custom webhook URL for the smoke test:
-
-```powershell
-$env:WEBHOOK_URL="https://example.com/webhooks"
-node scripts/smoke-test.mjs
-```
-
-Load repeatable demo data:
-
-```powershell
-docker compose --profile seed up seed-demo
-```
-
-Demo dashboard credentials:
-
-```text
-Tenant ID: 11111111-1111-1111-1111-111111111111
-API key: demo-api-key
-```
-
-Stop the demo:
-
-```powershell
 docker compose down
 ```
 
