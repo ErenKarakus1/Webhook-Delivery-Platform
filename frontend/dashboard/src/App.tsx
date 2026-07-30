@@ -1138,10 +1138,14 @@ function friendlyApiMessage(status: number, code: string | undefined, message: s
   if (status === 429 || code === "rate_limit_exceeded") {
     return message || "Rate limit exceeded. Wait a moment and try again.";
   }
-  if (status === 400 && message === "400") {
+  if (status === 400 && isBareStatusMessage(message)) {
     return "Request is invalid. Check the fields and try again.";
   }
   return message;
+}
+
+function isBareStatusMessage(message: string) {
+  return /^(400|400 bad request|bad request)$/i.test(message.trim());
 }
 
 function validateEndpointUrl(value: string) {
@@ -1167,7 +1171,7 @@ function endpointApiErrorMessage(exception: unknown) {
   if (!(exception instanceof ApiRequestError)) {
     return exception instanceof Error ? exception.message : "Could not create endpoint.";
   }
-  if (exception.status === 400 && exception.message === "400") {
+  if (exception.status === 400 && isBareStatusMessage(exception.message)) {
     return "Endpoint host could not be verified. Use a real, reachable HTTPS domain.";
   }
   return exception.message;
