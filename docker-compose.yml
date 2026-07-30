@@ -149,6 +149,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-webhook}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-webhook}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SERVICES_WEBHOOK_MANAGEMENT_BASE_URL: http://webhook-management-service:8083
     ports:
       - "${DELIVERY_SERVICE_PORT:-8081}:8081"
     healthcheck:

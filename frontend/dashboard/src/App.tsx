@@ -1,5 +1,5 @@
 import React, { FormEvent, useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, Bell, Clock, RefreshCcw } from "lucide-react";
+import { Activity, AlertTriangle, Bell, Clock, Globe, RefreshCcw, Route } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -147,10 +147,13 @@ function App() {
     return [
       { label: "Events", value: events.length.toString(), icon: Bell },
       { label: "Success", value: successRate, icon: Activity },
+      { label: "Attempts", value: attempts.length.toString(), icon: Route },
+      { label: "Endpoints", value: endpoints.filter((endpoint) => endpoint.active).length.toString(), icon: Globe },
+      { label: "Subscriptions", value: subscriptions.filter((subscription) => subscription.active).length.toString(), icon: Activity },
       { label: "Retries", value: retries.length.toString(), icon: Clock },
       { label: "Dead letters", value: deadLetteredEvents.length.toString(), icon: AlertTriangle },
     ];
-  }, [attempts, deadLetteredEvents, events, retries]);
+  }, [attempts, deadLetteredEvents, endpoints, events, retries, subscriptions]);
 
   const filteredEvents = useMemo(() => {
     const normalizedFilter = eventTypeFilter.trim().toLowerCase();
@@ -554,6 +557,30 @@ function App() {
       await loadDashboard();
     } catch (exception) {
       setDeadLetterError(exception instanceof Error ? exception.message : "Could not clear dead-lettered event.");
+    } finally {
+      setDeadLetterActionLoading(null);
+    }
+  }
+
+  async function replayDeadLetteredEvent(event: DeadLetteredEvent) {
+    if (!tenantId || !apiKey) {
+      setDeadLetterError("Tenant ID and API key are required.");
+      return;
+    }
+
+    setDeadLetterActionLoading(event.id);
+    setDeadLetterError(null);
+
+    try {
+      await request<DeadLetteredEvent>(
+        `/tenants/${tenantId}/dead-lettered-events/${event.id}/replay`,
+        { "X-API-Key": apiKey },
+        { method: "POST" },
+      );
+      setDeadLetteredEvents((current) => current.filter((item) => item.id !== event.id));
+      await loadDashboard();
+    } catch (exception) {
+      setDeadLetterError(exception instanceof Error ? exception.message : "Could not replay dead-lettered event.");
     } finally {
       setDeadLetterActionLoading(null);
     }
@@ -981,7 +1008,7 @@ function App() {
         <div className="advanced-grid">
           <Queue title="Retry queue" empty="No pending retries.">
             {retryError && <p className="form-error queue-error" role="alert">{retryError}</p>}
-            {retries.slice(0, 5).map((retry) => (
+            {retries.map((retry) => (
               <article className="compact-row" key={retry.id}>
                 <div>
                   <strong>Attempt {retry.attemptNumber}</strong>
@@ -1012,7 +1039,7 @@ function App() {
           </Queue>
           <Queue title="Dead letters" empty="No dead-lettered events.">
             {deadLetterError && <p className="form-error queue-error" role="alert">{deadLetterError}</p>}
-            {deadLetteredEvents.slice(0, 5).map((event) => (
+            {deadLetteredEvents.map((event) => (
               <article className="compact-row" key={event.id}>
                 <div>
                   <strong>{event.eventType}</strong>
@@ -1021,6 +1048,14 @@ function App() {
                 </div>
                 <div className="row-actions">
                   <span className="status failed">{event.statusCode ?? "Failed"}</span>
+                  <button
+                    className="secondary compact-action"
+                    disabled={deadLetterActionLoading === event.id}
+                    onClick={() => void replayDeadLetteredEvent(event)}
+                    type="button"
+                  >
+                    Replay
+                  </button>
                   <button
                     className="secondary compact-action"
                     disabled={deadLetterActionLoading === event.id}
