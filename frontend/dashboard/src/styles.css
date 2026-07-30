@@ -247,6 +247,11 @@ label span {
   min-width: 0;
 }
 
+.row small {
+  color: #475467;
+  font-size: 13px;
+}
+
 .row span,
 .compact-row span,
 .selected-event code {
@@ -284,8 +289,21 @@ label span {
 .selected-event {
   border-bottom: 1px solid #edf1f5;
   display: grid;
-  gap: 4px;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 14px 18px;
+}
+
+.selected-event div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.selected-event span {
+  color: #667085;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .empty {
@@ -402,6 +420,7 @@ label span {
   .row,
   .attempt,
   .compact-row,
+  .selected-event,
   .inline-form,
   .subscription-form {
     grid-template-columns: 1fr;

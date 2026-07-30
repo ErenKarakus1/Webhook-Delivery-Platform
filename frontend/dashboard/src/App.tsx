@@ -106,6 +106,18 @@ function App() {
   }, [attempts, deadLetteredEvents, events, retries]);
 
   const recentAttempts = selectedEvent ? selectedEventAttempts : attempts.slice(0, 6);
+  const deliverySummary = useMemo(() => {
+    const delivered = recentAttempts.filter((attempt) => attemptStatus(attempt) === "Delivered").length;
+    const failed = recentAttempts.filter((attempt) => attemptStatus(attempt) === "Failed").length;
+    const retrying = recentAttempts.filter((attempt) => attemptStatus(attempt) === "Retrying").length;
+
+    return {
+      delivered,
+      failed,
+      retrying,
+      total: recentAttempts.length,
+    };
+  }, [recentAttempts]);
 
   useEffect(() => {
     localStorage.setItem("tenantId", tenantId);
@@ -474,21 +486,48 @@ function App() {
           <PanelHeader title={selectedEvent ? "Selected delivery" : "Delivery attempts"} meta={detailLoading ? "Loading" : `${recentAttempts.length} shown`} />
           {selectedEvent && (
             <div className="selected-event">
-              <strong>{selectedEvent.eventType}</strong>
-              <code>{selectedEvent.id}</code>
+              <div>
+                <span>Event type</span>
+                <strong>{selectedEvent.eventType}</strong>
+              </div>
+              <div>
+                <span>Event ID</span>
+                <code>{selectedEvent.id}</code>
+              </div>
+              <div>
+                <span>Delivery jobs</span>
+                <strong>{deliverySummary.total}</strong>
+              </div>
+              <div>
+                <span>Delivered</span>
+                <strong>{deliverySummary.delivered}</strong>
+              </div>
+              <div>
+                <span>Failed</span>
+                <strong>{deliverySummary.failed}</strong>
+              </div>
+              <div>
+                <span>Retrying</span>
+                <strong>{deliverySummary.retrying}</strong>
+              </div>
             </div>
           )}
           <div className="list">
             {recentAttempts.length > 0 ? recentAttempts.map((attempt) => (
               <article className="row attempt" key={attempt.id}>
                 <div>
-                  <strong>Attempt {attempt.attemptNumber}</strong>
-                  <span>{attempt.statusCode ? `HTTP ${attempt.statusCode}` : attempt.errorMessage ?? attempt.eventId}</span>
+                  <strong>{attemptStatus(attempt)} to {endpointLabel(attempt.endpointId, endpoints)}</strong>
+                  <small>Attempt {attempt.attemptNumber}</small>
+                  <span>{attemptDetail(attempt)}</span>
                 </div>
                 <span className={`status ${attemptStatus(attempt).toLowerCase()}`}>{attemptStatus(attempt)}</span>
                 <time>{formatDate(attempt.attemptedAt)}</time>
               </article>
-            )) : <p className="empty">No delivery attempts yet.</p>}
+            )) : (
+              <p className="empty">
+                {selectedEvent ? "No matching active subscription for this event type, or delivery has not started yet." : "No delivery attempts yet."}
+              </p>
+            )}
           </div>
         </section>
 
@@ -649,6 +688,13 @@ function attemptStatus(attempt: Attempt) {
     return "Failed";
   }
   return "Retrying";
+}
+
+function attemptDetail(attempt: Attempt) {
+  if (attempt.statusCode) {
+    return `HTTP ${attempt.statusCode}`;
+  }
+  return attempt.errorMessage ?? "Waiting for response";
 }
 
 function delay(milliseconds: number) {
