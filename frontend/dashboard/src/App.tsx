@@ -105,6 +105,8 @@ function App() {
   const [endpointActionLoading, setEndpointActionLoading] = useState<string | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [subscriptionActionLoading, setSubscriptionActionLoading] = useState<string | null>(null);
+  const [retryActionLoading, setRetryActionLoading] = useState<string | null>(null);
+  const [deadLetterActionLoading, setDeadLetterActionLoading] = useState<string | null>(null);
   const [eventLoading, setEventLoading] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -264,6 +266,31 @@ function App() {
     }
   }
 
+  async function deleteEndpoint(endpoint: Endpoint) {
+    if (!tenantId || !apiKey) {
+      setError("Tenant ID and API key are required.");
+      return;
+    }
+
+    setEndpointActionLoading(endpoint.id);
+    setError(null);
+
+    try {
+      await request<void>(
+        `/tenants/${tenantId}/endpoints/${endpoint.id}`,
+        { "X-API-Key": apiKey },
+        { method: "DELETE" },
+      );
+      setEndpoints((current) => current.filter((item) => item.id !== endpoint.id));
+      setSubscriptions((current) => current.filter((item) => item.endpointId !== endpoint.id));
+      setSubscriptionEndpointId((current) => current === endpoint.id ? "" : current);
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Could not delete endpoint.");
+    } finally {
+      setEndpointActionLoading(null);
+    }
+  }
+
   async function createSubscription(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!tenantId || !apiKey) {
@@ -327,6 +354,75 @@ function App() {
       setError(exception instanceof Error ? exception.message : "Could not update subscription.");
     } finally {
       setSubscriptionActionLoading(null);
+    }
+  }
+
+  async function deleteSubscription(subscription: Subscription) {
+    if (!tenantId || !apiKey) {
+      setError("Tenant ID and API key are required.");
+      return;
+    }
+
+    setSubscriptionActionLoading(subscription.id);
+    setError(null);
+
+    try {
+      await request<void>(
+        `/tenants/${tenantId}/subscriptions/${subscription.id}`,
+        { "X-API-Key": apiKey },
+        { method: "DELETE" },
+      );
+      setSubscriptions((current) => current.filter((item) => item.id !== subscription.id));
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Could not delete subscription.");
+    } finally {
+      setSubscriptionActionLoading(null);
+    }
+  }
+
+  async function dispatchRetry(retry: Retry) {
+    if (!tenantId || !apiKey) {
+      setError("Tenant ID and API key are required.");
+      return;
+    }
+
+    setRetryActionLoading(retry.id);
+    setError(null);
+
+    try {
+      await request<Retry>(
+        `/tenants/${tenantId}/retries/${retry.id}/dispatch`,
+        { "X-API-Key": apiKey },
+        { method: "POST" },
+      );
+      setRetries((current) => current.filter((item) => item.id !== retry.id));
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Could not dispatch retry.");
+    } finally {
+      setRetryActionLoading(null);
+    }
+  }
+
+  async function deleteDeadLetteredEvent(event: DeadLetteredEvent) {
+    if (!tenantId || !apiKey) {
+      setError("Tenant ID and API key are required.");
+      return;
+    }
+
+    setDeadLetterActionLoading(event.id);
+    setError(null);
+
+    try {
+      await request<void>(
+        `/tenants/${tenantId}/dead-lettered-events/${event.id}`,
+        { "X-API-Key": apiKey },
+        { method: "DELETE" },
+      );
+      setDeadLetteredEvents((current) => current.filter((item) => item.id !== event.id));
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Could not clear dead-lettered event.");
+    } finally {
+      setDeadLetterActionLoading(null);
     }
   }
 
@@ -602,15 +698,26 @@ function App() {
                         </details>
                       </details>
                     </div>
-                    <button
-                      aria-label={endpoint.active ? "Deactivate endpoint" : "Activate endpoint"}
-                      className="secondary compact-action"
-                      disabled={endpointActionLoading === endpoint.id}
-                      onClick={() => void setEndpointActive(endpoint, !endpoint.active)}
-                      type="button"
-                    >
-                      {endpoint.active ? "Deactivate" : "Activate"}
-                    </button>
+                    <div className="row-actions">
+                      <button
+                        aria-label={endpoint.active ? "Deactivate endpoint" : "Activate endpoint"}
+                        className="secondary compact-action"
+                        disabled={endpointActionLoading === endpoint.id}
+                        onClick={() => void setEndpointActive(endpoint, !endpoint.active)}
+                        type="button"
+                      >
+                        {endpoint.active ? "Deactivate" : "Activate"}
+                      </button>
+                      <button
+                        aria-label="Delete endpoint"
+                        className="danger compact-action"
+                        disabled={endpointActionLoading === endpoint.id}
+                        onClick={() => void deleteEndpoint(endpoint)}
+                        type="button"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </article>
                 ))}
               </SimpleList>
@@ -643,15 +750,26 @@ function App() {
                       <small>{subscription.active ? "Publishes delivery jobs" : "Kept for history; no new jobs"}</small>
                       <span>{endpointLabel(subscription.endpointId, endpoints)}</span>
                     </div>
-                    <button
-                      aria-label={subscription.active ? "Deactivate subscription" : "Activate subscription"}
-                      className="secondary compact-action"
-                      disabled={subscriptionActionLoading === subscription.id}
-                      onClick={() => void setSubscriptionActive(subscription, !subscription.active)}
-                      type="button"
-                    >
-                      {subscription.active ? "Deactivate" : "Activate"}
-                    </button>
+                    <div className="row-actions">
+                      <button
+                        aria-label={subscription.active ? "Deactivate subscription" : "Activate subscription"}
+                        className="secondary compact-action"
+                        disabled={subscriptionActionLoading === subscription.id}
+                        onClick={() => void setSubscriptionActive(subscription, !subscription.active)}
+                        type="button"
+                      >
+                        {subscription.active ? "Deactivate" : "Activate"}
+                      </button>
+                      <button
+                        aria-label="Delete subscription"
+                        className="danger compact-action"
+                        disabled={subscriptionActionLoading === subscription.id}
+                        onClick={() => void deleteSubscription(subscription)}
+                        type="button"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </article>
                 ))}
               </SimpleList>
@@ -668,9 +786,20 @@ function App() {
               <article className="compact-row" key={retry.id}>
                 <div>
                   <strong>Attempt {retry.attemptNumber}</strong>
+                  <small>{endpointLabel(retry.endpointId, endpoints)}</small>
                   <span>{retry.eventId}</span>
                 </div>
-                <time>{formatDate(retry.dueAt)}</time>
+                <div className="row-actions">
+                  <time>{formatDate(retry.dueAt)}</time>
+                  <button
+                    className="secondary compact-action"
+                    disabled={retryActionLoading === retry.id}
+                    onClick={() => void dispatchRetry(retry)}
+                    type="button"
+                  >
+                    Retry now
+                  </button>
+                </div>
               </article>
             ))}
           </Queue>
@@ -679,9 +808,20 @@ function App() {
               <article className="compact-row" key={event.id}>
                 <div>
                   <strong>{event.eventType}</strong>
+                  <small>{endpointLabel(event.endpointId, endpoints)}</small>
                   <span>{event.errorMessage ?? event.eventId}</span>
                 </div>
-                <span className="status failed">{event.statusCode ?? "Failed"}</span>
+                <div className="row-actions">
+                  <span className="status failed">{event.statusCode ?? "Failed"}</span>
+                  <button
+                    className="secondary compact-action"
+                    disabled={deadLetterActionLoading === event.id}
+                    onClick={() => void deleteDeadLetteredEvent(event)}
+                    type="button"
+                  >
+                    Clear
+                  </button>
+                </div>
               </article>
             ))}
           </Queue>
@@ -725,6 +865,9 @@ async function request<T>(path: string, headers: Record<string, string>, init: R
   });
   if (!response.ok) {
     throw new Error(`${response.status} ${response.statusText}`);
+  }
+  if (response.status === 204) {
+    return undefined as T;
   }
   return response.json() as Promise<T>;
 }

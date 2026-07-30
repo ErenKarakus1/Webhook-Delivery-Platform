@@ -2,6 +2,7 @@ package com.webhooks.scheduler.retry;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +14,8 @@ public interface RetryQueueRepository extends JpaRepository<RetryQueueEntry, UUI
     List<RetryQueueEntry> findByTenantIdAndEventIdOrderByDueAtAsc(UUID tenantId, UUID eventId);
 
     List<RetryQueueEntry> findByTenantIdAndEndpointIdOrderByDueAtAsc(UUID tenantId, UUID endpointId);
+
+    Optional<RetryQueueEntry> findByIdAndTenantId(UUID id, UUID tenantId);
 
     @Query(
             value = """

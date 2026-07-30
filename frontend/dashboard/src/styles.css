@@ -38,6 +38,11 @@ button.secondary {
   color: #17202a;
 }
 
+button.danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 button.compact-action {
   align-self: start;
   min-height: 34px;
@@ -246,6 +251,15 @@ label span {
   display: grid;
   gap: 3px;
   min-width: 0;
+}
+
+.row > .row-actions,
+.compact-row > .row-actions {
+  align-self: start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .row small {
