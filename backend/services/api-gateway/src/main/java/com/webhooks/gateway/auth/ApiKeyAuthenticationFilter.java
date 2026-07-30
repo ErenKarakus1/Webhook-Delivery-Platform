@@ -80,7 +80,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         response.setHeader("X-RateLimit-Limit", Long.toString(rateLimit.limit()));
         response.setHeader("X-RateLimit-Remaining", Long.toString(rateLimit.remaining()));
         if (!rateLimit.allowed()) {
-            reject(response, HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded");
+            reject(response, HttpStatus.TOO_MANY_REQUESTS, "rate_limit_exceeded", "Rate limit exceeded. Wait a moment and try again.");
             return;
         }
 
@@ -117,8 +117,12 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private void reject(HttpServletResponse response, HttpStatus status, String message) throws IOException {
+        reject(response, status, "api_key_auth_failed", message);
+    }
+
+    private void reject(HttpServletResponse response, HttpStatus status, String code, String message) throws IOException {
         response.setStatus(status.value());
         response.setContentType("application/json");
-        response.getWriter().write("{\"code\":\"api_key_auth_failed\",\"message\":\"" + message + "\"}");
+        response.getWriter().write("{\"code\":\"" + code + "\",\"message\":\"" + message + "\"}");
     }
 }

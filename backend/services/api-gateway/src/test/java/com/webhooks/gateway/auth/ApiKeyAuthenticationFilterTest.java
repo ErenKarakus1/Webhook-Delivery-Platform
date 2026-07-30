@@ -120,7 +120,8 @@ class ApiKeyAuthenticationFilterTest {
         assertThat(response.getStatus()).isEqualTo(429);
         assertThat(response.getHeader("X-RateLimit-Limit")).isEqualTo("60");
         assertThat(response.getHeader("X-RateLimit-Remaining")).isEqualTo("0");
-        assertThat(response.getContentAsString()).contains("Rate limit exceeded");
+        assertThat(response.getContentAsString()).contains("rate_limit_exceeded");
+        assertThat(response.getContentAsString()).contains("Wait a moment and try again");
     }
 
     private MockHttpServletRequest request(String method, String uri) {

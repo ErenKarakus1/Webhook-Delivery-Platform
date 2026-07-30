@@ -1,5 +1,5 @@
 import React, { FormEvent, useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, Bell, Clock, RefreshCcw } from "lucide-react";
+import { Activity, AlertTriangle, Bell, Clock, RefreshCcw, X } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -553,7 +553,14 @@ function App() {
         </button>
       </form>
 
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <div className="error" role="alert">
+          <span>{error}</span>
+          <button aria-label="Dismiss error" className="icon-button error-dismiss" onClick={() => setError(null)} type="button">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+      )}
 
       <section className="stats">
         {stats.map(({ label, value, icon: Icon }) => (
@@ -866,14 +873,19 @@ function Queue({ children, empty, title }: { children: React.ReactNode; empty: s
 }
 
 async function request<T>(path: string, headers: Record<string, string>, init: RequestInit & { headers?: Record<string, string> } = {}): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-      ...init.headers,
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+        ...init.headers,
+      },
+    });
+  } catch (exception) {
+    throw new ApiRequestError(networkErrorMessage(exception), 0);
+  }
   if (!response.ok) {
     throw await readApiError(response);
   }
@@ -887,6 +899,13 @@ async function request<T>(path: string, headers: Record<string, string>, init: R
   return response.json() as Promise<T>;
 }
 
+function networkErrorMessage(exception: unknown) {
+  if (exception instanceof TypeError && exception.message.toLowerCase().includes("failed to fetch")) {
+    return "Could not reach the API. Check that Docker is running and the gateway is available at http://localhost:8080.";
+  }
+  return exception instanceof Error ? exception.message : "Could not reach the API.";
+}
+
 async function readApiError(response: Response) {
   const fallback = `${response.status} ${response.statusText}`;
   const contentType = response.headers.get("Content-Type") ?? "";
@@ -894,7 +913,7 @@ async function readApiError(response: Response) {
   if (contentType.includes("application/json")) {
     try {
       const body = await response.json() as Partial<{ code: string; error: string; message: string; path: string; status: number }>;
-      const message = body.message || body.error || fallback;
+      const message = friendlyApiMessage(response.status, body.code, body.message || body.error || fallback);
       return new ApiRequestError(message, response.status, body.code);
     } catch {
       return new ApiRequestError(fallback, response.status);
@@ -907,6 +926,13 @@ async function readApiError(response: Response) {
   } catch {
     return new ApiRequestError(fallback, response.status);
   }
+}
+
+function friendlyApiMessage(status: number, code: string | undefined, message: string) {
+  if (status === 429 || code === "rate_limit_exceeded") {
+    return message || "Rate limit exceeded. Wait a moment and try again.";
+  }
+  return message;
 }
 
 function attemptStatus(attempt: Attempt) {
