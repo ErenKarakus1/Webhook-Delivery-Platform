@@ -727,7 +727,7 @@ function App() {
       </section>
 
       <section className="workspace">
-        <section className="panel send-panel">
+        <section className="panel list-panel send-panel">
           <PanelHeader title="Send event" meta="Publish test event" />
           <form className="stack-form" onSubmit={ingestEvent}>
             <label>
@@ -751,7 +751,7 @@ function App() {
           </form>
         </section>
 
-        <section className="panel">
+        <section className="panel list-panel">
           <PanelHeader title="Events" meta={`${events.length} total`} />
           {selectedEndpoint && (
             <div className="panel-action-bar">
@@ -787,7 +787,7 @@ function App() {
           </div>
         </section>
 
-        <section className="panel">
+        <section className="panel list-panel">
           <PanelHeader title={deliveryPanelTitle(selectedEvent, selectedEndpoint)} meta={detailLoading ? "Loading" : `${recentAttempts.length} shown`} />
           {selectedEvent && (
             <div className="selected-event">

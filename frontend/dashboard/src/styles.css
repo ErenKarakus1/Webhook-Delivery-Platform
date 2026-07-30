@@ -196,7 +196,7 @@ label span {
 }
 
 .workspace {
-  align-items: stretch;
+  align-items: start;
   display: grid;
   gap: 18px;
   grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1fr) minmax(0, 1fr);
@@ -219,6 +219,10 @@ label span {
 
 .setup-panel {
   grid-column: 1 / -1;
+}
+
+.list-panel {
+  height: clamp(400px, 54vh, 520px);
 }
 
 .panel-header {
@@ -253,21 +257,44 @@ label span {
   padding: 18px;
 }
 
+.send-panel .stack-form {
+  align-content: start;
+  flex: 1;
+  gap: 14px;
+  min-height: 0;
+}
+
+.send-panel input {
+  min-height: 36px;
+  padding: 7px 10px;
+}
+
+.send-panel textarea {
+  min-height: 120px;
+}
+
+.send-panel button {
+  min-height: 36px;
+  justify-self: start;
+  min-width: 150px;
+}
+
 .list,
 .simple-list {
   display: grid;
 }
 
 .scroll-list {
+  align-content: start;
   flex: 1;
+  grid-auto-rows: max-content;
   min-height: 0;
   overflow-y: auto;
 }
 
 .events-scroll,
 .attempts-scroll {
-  flex: 0 0 auto;
-  height: clamp(360px, 52vh, 540px);
+  height: auto;
 }
 
 .row,
