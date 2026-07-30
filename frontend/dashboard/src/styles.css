@@ -240,8 +240,8 @@ label span {
   border-bottom: 0;
 }
 
-.row div,
-.compact-row div {
+.row > div,
+.compact-row > div {
   display: grid;
   gap: 3px;
   min-width: 0;
@@ -427,6 +427,7 @@ label span {
 }
 
 .setup-grid {
+  align-items: start;
   display: grid;
   gap: 18px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -434,8 +435,10 @@ label span {
 }
 
 .setup-grid > div {
+  align-content: start;
   display: grid;
   gap: 12px;
+  min-width: 0;
 }
 
 .inline-form {
