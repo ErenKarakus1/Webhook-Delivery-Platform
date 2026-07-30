@@ -41,6 +41,8 @@ type Subscription = {
 type Event = {
   id: string;
   eventType: string;
+  payload?: unknown;
+  idempotencyKey?: string | null;
   createdAt: string;
 };
 
@@ -50,9 +52,12 @@ type Attempt = {
   endpointId: string;
   attemptNumber: number;
   statusCode: number | null;
+  responseBody: string | null;
   errorMessage: string | null;
   attemptedAt: string;
 };
+
+type AttemptStatusFilter = "all" | "delivered" | "failed" | "retrying";
 
 type Retry = {
   id: string;
@@ -108,6 +113,8 @@ function App() {
   const [deadLetteredEvents, setDeadLetteredEvents] = useState<DeadLetteredEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [selectedEventAttempts, setSelectedEventAttempts] = useState<Attempt[]>([]);
+  const [eventTypeFilter, setEventTypeFilter] = useState("");
+  const [attemptStatusFilter, setAttemptStatusFilter] = useState<AttemptStatusFilter>("all");
   const [endpointUrl, setEndpointUrl] = useState("");
   const [subscriptionEndpointId, setSubscriptionEndpointId] = useState("");
   const [subscriptionEventType, setSubscriptionEventType] = useState("order.created");
@@ -144,7 +151,20 @@ function App() {
     ];
   }, [attempts, deadLetteredEvents, events, retries]);
 
-  const recentAttempts = selectedEvent ? selectedEventAttempts : attempts.slice(0, 6);
+  const filteredEvents = useMemo(() => {
+    const normalizedFilter = eventTypeFilter.trim().toLowerCase();
+    if (!normalizedFilter) {
+      return events;
+    }
+    return events.filter((event) => event.eventType.toLowerCase().includes(normalizedFilter));
+  }, [eventTypeFilter, events]);
+  const visibleEvents = filteredEvents.slice(0, 8);
+
+  const baseAttempts = selectedEvent ? selectedEventAttempts : attempts;
+  const filteredAttempts = useMemo(() => (
+    baseAttempts.filter((attempt) => attemptStatusFilter === "all" || attemptStatus(attempt).toLowerCase() === attemptStatusFilter)
+  ), [attemptStatusFilter, baseAttempts]);
+  const recentAttempts = selectedEvent ? filteredAttempts : filteredAttempts.slice(0, 6);
   const deliverySummary = useMemo(() => {
     const delivered = recentAttempts.filter((attempt) => attemptStatus(attempt) === "Delivered").length;
     const failed = recentAttempts.filter((attempt) => attemptStatus(attempt) === "Failed").length;
@@ -551,6 +571,8 @@ function App() {
       const createdEvent = {
         id: response.eventId,
         eventType: response.eventType,
+        payload,
+        idempotencyKey: idempotencyKey.trim() || null,
         createdAt: response.createdAt,
       };
       setEvents((current) => [createdEvent, ...current.filter((item) => item.id !== createdEvent.id)]);
@@ -673,8 +695,16 @@ function App() {
 
         <section className="panel">
           <PanelHeader title="Recent events" meta={`${events.length} total`} />
+          <div className="panel-controls">
+            <input
+              aria-label="Filter events by type"
+              placeholder="Filter event type"
+              value={eventTypeFilter}
+              onChange={(event) => setEventTypeFilter(event.target.value)}
+            />
+          </div>
           <div className="list">
-            {events.slice(0, 8).length > 0 ? events.slice(0, 8).map((event) => (
+            {visibleEvents.length > 0 ? visibleEvents.map((event) => (
               <button
                 className={`row row-button ${selectedEvent?.id === event.id ? "selected" : ""}`}
                 key={event.id}
@@ -687,7 +717,7 @@ function App() {
                 </div>
                 <time>{formatDate(event.createdAt)}</time>
               </button>
-            )) : <p className="empty">No events yet.</p>}
+            )) : <p className="empty">{events.length > 0 ? "No events match this filter." : "No events yet."}</p>}
           </div>
         </section>
 
@@ -721,6 +751,26 @@ function App() {
               </div>
             </div>
           )}
+          {selectedEvent?.payload !== undefined && (
+            <details className="payload-detail" open>
+              <summary>Payload</summary>
+              <pre>
+                <code>{formatJson(selectedEvent.payload)}</code>
+              </pre>
+            </details>
+          )}
+          <div className="panel-controls">
+            <select
+              aria-label="Filter attempts by status"
+              value={attemptStatusFilter}
+              onChange={(event) => setAttemptStatusFilter(event.target.value as AttemptStatusFilter)}
+            >
+              <option value="all">All attempts</option>
+              <option value="delivered">Delivered</option>
+              <option value="failed">Failed</option>
+              <option value="retrying">Retrying</option>
+            </select>
+          </div>
           <div className="list">
             {recentAttempts.length > 0 ? recentAttempts.map((attempt) => (
               <article className="row attempt" key={attempt.id}>
@@ -728,6 +778,7 @@ function App() {
                   <strong>{attemptStatus(attempt)} to {endpointLabel(attempt.endpointId, endpoints)}</strong>
                   <small>Attempt {attempt.attemptNumber}</small>
                   <span>{attemptDetail(attempt)} / Endpoint {shortId(attempt.endpointId)}</span>
+                  {attemptExtraDetail(attempt) && <span>{attemptExtraDetail(attempt)}</span>}
                 </div>
                 <span className={`status ${attemptStatus(attempt).toLowerCase()}`}>{attemptStatus(attempt)}</span>
                 <time>{formatDate(attempt.attemptedAt)}</time>
@@ -1074,6 +1125,16 @@ function attemptDetail(attempt: Attempt) {
   return attempt.errorMessage ?? "Waiting for response";
 }
 
+function attemptExtraDetail(attempt: Attempt) {
+  if (attempt.errorMessage) {
+    return attempt.errorMessage;
+  }
+  if (attempt.responseBody) {
+    return `Response: ${attempt.responseBody}`;
+  }
+  return null;
+}
+
 function delay(milliseconds: number) {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
@@ -1123,6 +1184,14 @@ function retryDueLabel(value: string) {
 
   const hours = Math.ceil(minutes / 60);
   return `Retries in ${hours}h`;
+}
+
+function formatJson(value: unknown) {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
 }
 
 function formatDate(value: string) {
