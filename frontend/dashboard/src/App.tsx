@@ -1,5 +1,5 @@
 import React, { FormEvent, useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, Bell, Clock, Globe, RefreshCcw, Route } from "lucide-react";
+import { Activity, AlertTriangle, Bell, Clock, Globe, LoaderCircle, RefreshCcw, Route } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -686,7 +686,7 @@ function App() {
           <h1>Webhook operations dashboard</h1>
         </div>
         <button type="button" onClick={() => void loadDashboard()} disabled={loading}>
-          <RefreshCcw size={16} aria-hidden="true" />
+          {loading ? <LoaderCircle className="spin" size={16} aria-hidden="true" /> : <RefreshCcw size={16} aria-hidden="true" />}
           Refresh
         </button>
       </header>
@@ -700,8 +700,12 @@ function App() {
           <span>API key</span>
           <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} />
         </label>
-        <button type="submit" disabled={loading}>Load dashboard</button>
+        <button type="submit" disabled={loading}>
+          {loading && <LoaderCircle className="spin" size={16} aria-hidden="true" />}
+          Load dashboard
+        </button>
         <button type="button" className="secondary" onClick={createTenantAndApiKey} disabled={setupLoading}>
+          {setupLoading && <LoaderCircle className="spin" size={16} aria-hidden="true" />}
           New tenant
         </button>
       </form>
@@ -738,7 +742,10 @@ function App() {
               <span>JSON payload</span>
               <textarea value={eventPayload} onChange={(event) => setEventPayload(event.target.value)} spellCheck={false} />
             </label>
-            <button type="submit" disabled={eventLoading}>Send event</button>
+            <button type="submit" disabled={eventLoading}>
+              {eventLoading && <LoaderCircle className="spin" size={16} aria-hidden="true" />}
+              Send event
+            </button>
             {sendError && <p className="form-error" role="alert">{sendError}</p>}
             {sendResult && <p className="result-message">{sendResult}</p>}
           </form>
@@ -746,6 +753,13 @@ function App() {
 
         <section className="panel">
           <PanelHeader title="Events" meta={`${events.length} total`} />
+          {selectedEndpoint && (
+            <div className="panel-action-bar">
+              <button className="secondary compact-action" onClick={clearEndpointSelection} type="button">
+                Back to events
+              </button>
+            </div>
+          )}
           <div className="panel-controls">
             <input
               aria-label="Filter events by type"
@@ -829,9 +843,6 @@ function App() {
                 <span>URL</span>
                 <strong>{selectedEndpoint.url}</strong>
               </div>
-              <button className="secondary compact-action" onClick={clearEndpointSelection} type="button">
-                Back to events
-              </button>
             </div>
           )}
           <div className="panel-controls">
@@ -877,7 +888,10 @@ function App() {
                   value={endpointUrl}
                   onChange={(event) => setEndpointUrl(event.target.value)}
                 />
-                <button type="submit" disabled={endpointLoading}>Add endpoint</button>
+                <button type="submit" disabled={endpointLoading}>
+                  {endpointLoading && <LoaderCircle className="spin" size={16} aria-hidden="true" />}
+                  Add endpoint
+                </button>
               </form>
               {endpointError && <p className="form-error" role="alert">{endpointError}</p>}
               <SimpleList empty="No endpoints configured.">
@@ -964,7 +978,10 @@ function App() {
                   value={subscriptionEventType}
                   onChange={(event) => setSubscriptionEventType(event.target.value)}
                 />
-                <button type="submit" disabled={subscriptionLoading}>Add subscription</button>
+                <button type="submit" disabled={subscriptionLoading}>
+                  {subscriptionLoading && <LoaderCircle className="spin" size={16} aria-hidden="true" />}
+                  Add subscription
+                </button>
               </form>
               {subscriptionError && <p className="form-error" role="alert">{subscriptionError}</p>}
               <SimpleList empty="No subscriptions configured.">

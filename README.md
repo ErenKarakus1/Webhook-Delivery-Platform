@@ -1,165 +1,282 @@
 # Webhook Delivery Platform
 
-A microservices-based webhook delivery platform built with Java 21, Spring Boot, PostgreSQL, Redis, Kafka, Docker, and React.
+[![CI](https://github.com/ErenKarakus1/Webhook-Delivery-Platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ErenKarakus1/Webhook-Delivery-Platform/actions/workflows/ci.yml)
+![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3-6DB33F?logo=springboot)
+![Kafka](https://img.shields.io/badge/Kafka-3.7-231F20?logo=apachekafka)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)
+![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
 
-The project demonstrates a realistic webhook workflow: tenants configure HTTPS endpoints and event subscriptions, events are ingested through an API gateway, delivery jobs are published to Kafka, delivery attempts are signed and recorded, failed attempts are retried, and exhausted deliveries move to a dead-letter queue that can be replayed from the dashboard.
-
-## Architecture
-
-```text
-React Dashboard
-      |
-API Gateway
-      |
-      +--> Webhook Management Service --> PostgreSQL
-      +--> Event Ingestion Service -----> PostgreSQL + Kafka
-      +--> Delivery Service ------------> Kafka + PostgreSQL
-      +--> Scheduler Service -----------> PostgreSQL + Kafka
-
-Redis is used by the gateway for rate limiting.
-Flyway owns database migrations.
-```
-
-## Services
-
-- `api-gateway`: routes external traffic, authenticates tenant/admin requests, applies CORS and rate limiting.
-- `webhook-management-service`: manages tenants, API keys, webhook endpoints, and subscriptions.
-- `event-ingestion-service`: stores incoming events, enforces idempotency, and publishes delivery jobs for matching subscriptions.
-- `delivery-service`: consumes delivery jobs, signs webhook requests, records attempts, schedules retries, and manages dead letters.
-- `scheduler-service`: republishes due retry jobs from PostgreSQL into Kafka.
-- `frontend/dashboard`: React dashboard for local demos and operational inspection.
+A microservices-based webhook delivery platform built with Java, Spring Boot, PostgreSQL, Redis, Kafka, Docker, and React. The project demonstrates practical backend infrastructure patterns: tenant API keys, endpoint and subscription management, idempotent event ingestion, Kafka-based asynchronous delivery, HMAC webhook signatures, retry scheduling, dead-letter replay, rate limiting, and a Docker Compose demo environment.
 
 ## Features
 
 - Tenant and API key bootstrap flow
 - HTTPS webhook endpoint management
 - Event subscription management
-- Event ingestion with idempotency keys
-- Kafka-based asynchronous delivery
-- HMAC-SHA256 webhook signatures
+- Idempotent event ingestion
+- Kafka-based delivery job publishing
+- HMAC-SHA256 webhook request signing
 - Delivery attempt history
-- Retry queue with manual retry/cancel actions
-- Dead-letter queue with clear/replay actions
-- Dashboard metrics for events, attempts, endpoints, subscriptions, retries, and dead letters
+- Retry queue with manual retry and cancel actions
+- Dead-letter queue with clear and replay actions
+- Redis-backed gateway rate limiting
+- Flyway-managed PostgreSQL schema
+- React dashboard for local demos
+- Backend and frontend test/build checks
 
-## Local Setup
+## Architecture
 
-Requirements:
+```mermaid
+flowchart LR
+    dashboard[React Dashboard] --> gateway[API Gateway]
 
-- Docker Desktop
-- Java 21
-- Maven 3.9+
-- Node.js 20+
+    subgraph gateway[API Gateway]
+        auth[Tenant API Key Auth]
+        admin[Admin Bootstrap Auth]
+        cors[CORS]
+        limit[Redis Rate Limiting]
+        proxy[Service Routing]
+    end
 
-Start the full stack:
+    gateway --> management[Webhook Management Service]
+    gateway --> ingestion[Event Ingestion Service]
+    gateway --> delivery[Delivery Service]
+    gateway --> scheduler[Scheduler Service]
+
+    management --> postgres[(PostgreSQL)]
+    ingestion --> postgres
+    delivery --> postgres
+    scheduler --> postgres
+
+    ingestion --> kafka[(Kafka)]
+    scheduler --> kafka
+    kafka --> delivery
+    delivery --> target[Webhook Endpoint]
+```
+
+The dashboard talks to the API gateway. The gateway authenticates requests, applies rate limiting, and routes tenant APIs to the correct Spring service. Events are stored by the ingestion service and published to Kafka as delivery jobs. The delivery service consumes jobs, signs outbound webhook requests, records attempts, and schedules retries. The scheduler republishes due retries. Exhausted deliveries are stored in the dead-letter queue and can be replayed from the dashboard.
+
+## Getting Started
+
+Start the full local stack:
+
+```bash
+docker compose up -d --build
+```
+
+The dashboard starts on `http://localhost:3000`.
+
+```bash
+curl http://localhost:8080/actuator/health
+```
+
+## Docker Demo
+
+```bash
+docker compose up -d --build
+```
+
+The Compose demo starts PostgreSQL, Flyway, Redis, Kafka, all Spring services, and the React dashboard.
+
+Open the dashboard:
+
+```text
+http://localhost:3000
+```
+
+Default API gateway:
+
+```text
+http://localhost:8080
+```
+
+## Demo Walkthrough
+
+Start the platform:
+
+```bash
+docker compose up -d --build
+```
+
+Open the dashboard:
+
+```text
+http://localhost:3000
+```
+
+Create a tenant from the dashboard, then:
+
+```text
+1. Add a reachable HTTPS webhook endpoint.
+2. Add a subscription for an event type such as order.created.
+3. Send a test event.
+4. Select the event to inspect its payload and delivery attempts.
+5. Open the retry and dead-letter queues to retry, cancel, clear, or replay failed deliveries.
+```
+
+Run the smoke test:
+
+```bash
+node scripts/smoke-test.mjs
+```
+
+Stop the demo:
+
+```bash
+docker compose down
+```
+
+## PowerShell Demo
+
+Start the platform:
 
 ```powershell
 docker compose up -d --build
 ```
 
-Open:
-
-- Dashboard: `http://localhost:3000`
-- API gateway: `http://localhost:8080`
-
-Useful service URLs:
-
-- Webhook management service: `http://localhost:8083`
-- Event ingestion service: `http://localhost:8084`
-- Delivery service: `http://localhost:8081`
-- Scheduler service: `http://localhost:8082`
-
-To customize local ports, credentials, admin API key, or rate limits:
+Check the gateway health endpoint:
 
 ```powershell
-Copy-Item .env.example .env
+Invoke-RestMethod http://localhost:8080/actuator/health
 ```
 
-Then edit `.env` and restart Docker Compose.
+Run the smoke test:
 
-## Demo Flow
+```powershell
+node scripts/smoke-test.mjs
+```
 
-1. Open `http://localhost:3000`.
-2. Click `New tenant`.
-3. Add a reachable HTTPS webhook endpoint.
-4. Add a subscription for an event type such as `order.created`.
-5. Send a test event from the dashboard.
-6. Select the event to inspect payload and delivery attempts.
-7. Use the retry and dead-letter queues to retry, cancel, clear, or replay failed deliveries.
+Use a custom webhook URL for the smoke test:
 
-For repeatable demo data:
+```powershell
+$env:WEBHOOK_URL="https://example.com/webhooks"
+node scripts/smoke-test.mjs
+```
+
+Load repeatable demo data:
 
 ```powershell
 docker compose --profile seed up seed-demo
 ```
 
-Demo credentials:
+Demo dashboard credentials:
 
-- Tenant ID: `11111111-1111-1111-1111-111111111111`
-- API key: `demo-api-key`
-
-## Smoke Test
-
-After the stack is healthy:
-
-```powershell
-node scripts/smoke-test.mjs
+```text
+Tenant ID: 11111111-1111-1111-1111-111111111111
+API key: demo-api-key
 ```
 
-Optional overrides:
+Stop the demo:
 
 ```powershell
-$env:API_BASE_URL="http://localhost:8080"
-$env:ADMIN_API_KEY="local-admin-key"
-$env:WEBHOOK_URL="https://example.com/webhooks"
-node scripts/smoke-test.mjs
+docker compose down
 ```
+
+## Configuration
+
+Local defaults live in `docker-compose.yml`. Copy `.env.example` when you want to override ports, credentials, admin API key, or rate limits:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Common values:
+
+```text
+API_GATEWAY_PORT=8080
+DASHBOARD_PORT=3000
+POSTGRES_PORT=5432
+REDIS_PORT=6379
+KAFKA_PORT=9092
+ADMIN_API_KEY=local-admin-key
+GATEWAY_RATE_LIMIT_REQUESTS_PER_MINUTE=120
+```
+
+## Webhook Signing
+
+Each delivery request includes signature headers generated with the endpoint secret:
+
+```text
+X-Webhook-Event-Id
+X-Webhook-Event-Type
+X-Webhook-Timestamp
+X-Webhook-Signature
+```
+
+The signature is an HMAC-SHA256 digest of:
+
+```text
+timestamp + "." + rawBody
+```
+
+The dashboard shows each endpoint secret and a Node.js verification example.
+
+## Endpoints
+
+- `POST /tenants`: create tenant with admin API key
+- `POST /tenants/{tenantId}/api-keys`: create tenant API key
+- `GET /tenants/{tenantId}/endpoints`: list webhook endpoints
+- `POST /tenants/{tenantId}/endpoints`: create webhook endpoint
+- `GET /tenants/{tenantId}/subscriptions`: list subscriptions
+- `POST /tenants/{tenantId}/subscriptions`: create subscription
+- `POST /tenants/{tenantId}/events`: ingest event
+- `GET /tenants/{tenantId}/attempts`: list delivery attempts
+- `GET /tenants/{tenantId}/retries`: list retry queue
+- `POST /tenants/{tenantId}/retries/{retryId}/dispatch`: retry now
+- `GET /tenants/{tenantId}/dead-lettered-events`: list dead letters
+- `POST /tenants/{tenantId}/dead-lettered-events/{deadLetterId}/replay`: replay dead letter
+
+## Known Limitations
+
+- Authentication is API-key based for the MVP. A production system would typically add user accounts, OAuth/OIDC, scoped tokens, and key rotation.
+- Webhook endpoint validation is intentionally strict and rejects hosts that cannot be resolved.
+- Retry policy is fixed in service configuration rather than editable per endpoint.
+- Kafka topics are auto-created in the local demo.
+- The dashboard is a local portfolio/demo UI rather than a multi-user admin product.
+- Docker Compose is intended for local demonstration, not hardened production deployment.
+
+## Future Improvements
+
+- Add user login and role-based tenant access.
+- Add endpoint secret rotation.
+- Add per-endpoint retry policy configuration.
+- Add OpenTelemetry tracing across services.
+- Add Prometheus metrics dashboards.
+- Add pagination for large tenants.
+- Add Kubernetes or Helm deployment examples.
 
 ## Development
 
-Backend tests:
+Run backend tests:
 
-```powershell
+```bash
 cd backend/services
 mvn test
 ```
 
-Frontend checks:
+Run frontend checks:
 
-```powershell
+```bash
 cd frontend/dashboard
-npm.cmd install
-npm.cmd run build
+npm install
+npm run build
 ```
 
-Run the dashboard locally:
+Run the dashboard dev server:
 
-```powershell
+```bash
 cd frontend/dashboard
-npm.cmd run dev
+npm run dev
 ```
 
-Run one backend service locally:
+Validate Docker Compose:
 
-```powershell
-cd backend/services
-mvn -pl api-gateway spring-boot:run
+```bash
+docker compose config
 ```
 
-## CI
+## License
 
-GitHub Actions runs:
-
-- Java 21 backend tests with Maven
-- Node 20 dashboard build
-- Docker Compose configuration validation
-- Smoke-test syntax validation
-
-## Tech Stack
-
-- Java 21, Spring Boot
-- PostgreSQL, Flyway
-- Redis
-- Kafka
-- React, TypeScript, Vite
-- Docker Compose
+This project is licensed under the MIT License.

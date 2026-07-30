@@ -57,6 +57,16 @@ button.icon-button {
   width: 34px;
 }
 
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 input,
 select,
 textarea {
@@ -223,6 +233,13 @@ label span {
 
 .panel-controls {
   border-bottom: 1px solid #edf1f5;
+  padding: 12px 18px;
+}
+
+.panel-action-bar {
+  border-bottom: 1px solid #edf1f5;
+  display: flex;
+  justify-content: flex-end;
   padding: 12px 18px;
 }
 
