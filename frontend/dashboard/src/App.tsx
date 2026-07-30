@@ -82,6 +82,17 @@ type EventIngestionResponse = {
   createdAt: string;
 };
 
+class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = "ApiRequestError";
+  }
+}
+
 function App() {
   const [tenantId, setTenantId] = useState(() => localStorage.getItem("tenantId") ?? "");
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("apiKey") ?? "");
@@ -864,12 +875,38 @@ async function request<T>(path: string, headers: Record<string, string>, init: R
     },
   });
   if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
+    throw await readApiError(response);
   }
   if (response.status === 204) {
     return undefined as T;
   }
+  const contentType = response.headers.get("Content-Type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return undefined as T;
+  }
   return response.json() as Promise<T>;
+}
+
+async function readApiError(response: Response) {
+  const fallback = `${response.status} ${response.statusText}`;
+  const contentType = response.headers.get("Content-Type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    try {
+      const body = await response.json() as Partial<{ code: string; error: string; message: string; path: string; status: number }>;
+      const message = body.message || body.error || fallback;
+      return new ApiRequestError(message, response.status, body.code);
+    } catch {
+      return new ApiRequestError(fallback, response.status);
+    }
+  }
+
+  try {
+    const text = await response.text();
+    return new ApiRequestError(text.trim() || fallback, response.status);
+  } catch {
+    return new ApiRequestError(fallback, response.status);
+  }
 }
 
 function attemptStatus(attempt: Attempt) {
