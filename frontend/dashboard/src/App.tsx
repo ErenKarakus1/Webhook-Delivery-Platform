@@ -57,7 +57,7 @@ type Attempt = {
   attemptedAt: string;
 };
 
-type AttemptStatusFilter = "all" | "delivered" | "failed" | "retrying";
+type AttemptStatusFilter = "all" | "delivered" | "failed";
 
 type Retry = {
   id: string;
@@ -768,7 +768,6 @@ function App() {
               <option value="all">All attempts</option>
               <option value="delivered">Delivered</option>
               <option value="failed">Failed</option>
-              <option value="retrying">Retrying</option>
             </select>
           </div>
           <div className="list">
