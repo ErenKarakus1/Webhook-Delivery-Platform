@@ -21,6 +21,12 @@ public class GlobalExceptionHandler {
                 .body(ApiError.of("resource_not_found", exception.getMessage()));
     }
 
+    @ExceptionHandler(DuplicateResourceException.class)
+    ResponseEntity<ApiError> handleDuplicateResource(DuplicateResourceException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiError.of("duplicate_resource", exception.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException exception) {
         String message = exception.getBindingResult().getFieldErrors().stream()
@@ -34,6 +40,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<ApiError> handleDataIntegrity() {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiError.of("data_integrity_violation", "Resource is still referenced by another record"));
+                .body(ApiError.of("data_integrity_violation", "Resource conflicts with existing data or is still referenced by another record"));
     }
 }

@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
+import com.webhooks.management.common.DuplicateResourceException;
 import com.webhooks.management.common.ResourceNotFoundException;
 import com.webhooks.management.endpoint.EndpointResponse;
 import com.webhooks.management.endpoint.EndpointService;
@@ -69,6 +71,23 @@ class SubscriptionServiceTest {
     }
 
     @Test
+    void rejectsDuplicateSubscriptionForEndpointAndEventType() {
+        UUID tenantId = UUID.randomUUID();
+        UUID endpointId = UUID.randomUUID();
+        when(tenantService.getTenantEntity(tenantId)).thenReturn(new Tenant("Acme"));
+        when(endpointService.getEndpoint(tenantId, endpointId)).thenReturn(endpointResponse(tenantId, endpointId));
+        when(subscriptionRepository.existsByEndpointIdAndEventTypeIgnoreCase(endpointId, "order.created")).thenReturn(true);
+
+        assertThatThrownBy(() -> subscriptionService.createSubscription(
+                tenantId,
+                new CreateSubscriptionRequest(endpointId, "order.created")
+        )).isInstanceOf(DuplicateResourceException.class)
+                .hasMessageContaining("already has a subscription");
+
+        verify(subscriptionRepository, never()).save(any(WebhookSubscription.class));
+    }
+
+    @Test
     void updatesSubscriptionEndpointAndEventType() {
         UUID tenantId = UUID.randomUUID();
         UUID endpointId = UUID.randomUUID();
@@ -87,6 +106,27 @@ class SubscriptionServiceTest {
         assertThat(response.eventType()).isEqualTo("invoice.paid");
         assertThat(subscription.getEndpointId()).isEqualTo(nextEndpointId);
         assertThat(subscription.getEventType()).isEqualTo("invoice.paid");
+    }
+
+    @Test
+    void rejectsSubscriptionUpdateThatDuplicatesEndpointAndEventType() {
+        UUID tenantId = UUID.randomUUID();
+        UUID endpointId = UUID.randomUUID();
+        UUID nextEndpointId = UUID.randomUUID();
+        WebhookSubscription subscription = new WebhookSubscription(tenantId, endpointId, "order.created");
+        when(subscriptionRepository.findByIdAndTenantId(subscription.getId(), tenantId)).thenReturn(Optional.of(subscription));
+        when(endpointService.getEndpoint(tenantId, nextEndpointId)).thenReturn(endpointResponse(tenantId, nextEndpointId));
+        when(subscriptionRepository.existsByEndpointIdAndEventTypeIgnoreCaseAndIdNot(
+                nextEndpointId,
+                "invoice.paid",
+                subscription.getId()
+        )).thenReturn(true);
+
+        assertThatThrownBy(() -> subscriptionService.updateSubscription(
+                tenantId,
+                subscription.getId(),
+                new UpdateSubscriptionRequest(nextEndpointId, "invoice.paid")
+        )).isInstanceOf(DuplicateResourceException.class);
     }
 
     @Test

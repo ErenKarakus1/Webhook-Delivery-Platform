@@ -1,5 +1,6 @@
 package com.webhooks.management.endpoint;
 
+import com.webhooks.management.common.DuplicateResourceException;
 import com.webhooks.management.common.ResourceNotFoundException;
 import com.webhooks.management.tenant.TenantService;
 import java.util.List;
@@ -30,6 +31,9 @@ public class EndpointService {
     public EndpointResponse createEndpoint(UUID tenantId, CreateEndpointRequest request) {
         tenantService.getTenantEntity(tenantId);
         urlValidator.validate(request.url());
+        if (endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrue(tenantId, request.url())) {
+            throw new DuplicateResourceException("An active endpoint already exists for this URL");
+        }
         WebhookEndpoint endpoint = endpointRepository.save(
                 new WebhookEndpoint(tenantId, request.url(), secretGenerator.generate())
         );
@@ -53,6 +57,10 @@ public class EndpointService {
     public EndpointResponse updateEndpoint(UUID tenantId, UUID endpointId, UpdateEndpointRequest request) {
         WebhookEndpoint endpoint = findEndpoint(tenantId, endpointId);
         urlValidator.validate(request.url());
+        if (endpoint.isActive()
+                && endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndIdNot(tenantId, request.url(), endpointId)) {
+            throw new DuplicateResourceException("An active endpoint already exists for this URL");
+        }
         endpoint.setUrl(request.url());
         return EndpointResponse.from(endpoint);
     }
@@ -60,6 +68,9 @@ public class EndpointService {
     @Transactional
     public EndpointResponse setEndpointActive(UUID tenantId, UUID endpointId, boolean active) {
         WebhookEndpoint endpoint = findEndpoint(tenantId, endpointId);
+        if (active && endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndIdNot(tenantId, endpoint.getUrl(), endpointId)) {
+            throw new DuplicateResourceException("An active endpoint already exists for this URL");
+        }
         endpoint.setActive(active);
         return EndpointResponse.from(endpoint);
     }

@@ -9,4 +9,8 @@ public interface EndpointRepository extends JpaRepository<WebhookEndpoint, UUID>
     List<WebhookEndpoint> findByTenantIdOrderByCreatedAtDesc(UUID tenantId);
 
     Optional<WebhookEndpoint> findByIdAndTenantId(UUID id, UUID tenantId);
+
+    boolean existsByTenantIdAndUrlIgnoreCaseAndActiveTrue(UUID tenantId, String url);
+
+    boolean existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndIdNot(UUID tenantId, String url, UUID id);
 }

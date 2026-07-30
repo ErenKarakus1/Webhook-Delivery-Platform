@@ -9,4 +9,8 @@ public interface SubscriptionRepository extends JpaRepository<WebhookSubscriptio
     List<WebhookSubscription> findByTenantIdOrderByCreatedAtDesc(UUID tenantId);
 
     Optional<WebhookSubscription> findByIdAndTenantId(UUID id, UUID tenantId);
+
+    boolean existsByEndpointIdAndEventTypeIgnoreCase(UUID endpointId, String eventType);
+
+    boolean existsByEndpointIdAndEventTypeIgnoreCaseAndIdNot(UUID endpointId, String eventType, UUID id);
 }

@@ -1,5 +1,6 @@
 package com.webhooks.management.subscription;
 
+import com.webhooks.management.common.DuplicateResourceException;
 import com.webhooks.management.common.ResourceNotFoundException;
 import com.webhooks.management.endpoint.EndpointService;
 import com.webhooks.management.tenant.TenantService;
@@ -28,6 +29,9 @@ public class SubscriptionService {
     public SubscriptionResponse createSubscription(UUID tenantId, CreateSubscriptionRequest request) {
         tenantService.getTenantEntity(tenantId);
         endpointService.getEndpoint(tenantId, request.endpointId());
+        if (subscriptionRepository.existsByEndpointIdAndEventTypeIgnoreCase(request.endpointId(), request.eventType())) {
+            throw new DuplicateResourceException("This endpoint already has a subscription for that event type");
+        }
 
         WebhookSubscription subscription = subscriptionRepository.save(
                 new WebhookSubscription(tenantId, request.endpointId(), request.eventType())
@@ -52,6 +56,13 @@ public class SubscriptionService {
     public SubscriptionResponse updateSubscription(UUID tenantId, UUID subscriptionId, UpdateSubscriptionRequest request) {
         WebhookSubscription subscription = findSubscription(tenantId, subscriptionId);
         endpointService.getEndpoint(tenantId, request.endpointId());
+        if (subscriptionRepository.existsByEndpointIdAndEventTypeIgnoreCaseAndIdNot(
+                request.endpointId(),
+                request.eventType(),
+                subscriptionId
+        )) {
+            throw new DuplicateResourceException("This endpoint already has a subscription for that event type");
+        }
         subscription.setEndpointId(request.endpointId());
         subscription.setEventType(request.eventType());
         return SubscriptionResponse.from(subscription);
