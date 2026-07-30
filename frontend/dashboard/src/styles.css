@@ -266,7 +266,7 @@ label span {
 
 .events-scroll,
 .attempts-scroll {
-  min-height: 360px;
+  height: clamp(360px, 52vh, 540px);
 }
 
 .row,
