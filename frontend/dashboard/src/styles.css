@@ -39,6 +39,7 @@ button.secondary {
 }
 
 button.compact-action {
+  align-self: start;
   min-height: 34px;
   padding: 0 12px;
 }
