@@ -29,7 +29,7 @@ public class SubscriptionService {
     public SubscriptionResponse createSubscription(UUID tenantId, CreateSubscriptionRequest request) {
         tenantService.getTenantEntity(tenantId);
         endpointService.getEndpoint(tenantId, request.endpointId());
-        if (subscriptionRepository.existsByEndpointIdAndEventTypeIgnoreCase(request.endpointId(), request.eventType())) {
+        if (subscriptionRepository.existsByEndpointIdAndEventTypeIgnoreCaseAndDeletedAtIsNull(request.endpointId(), request.eventType())) {
             throw new DuplicateResourceException("This endpoint already has a subscription for that event type");
         }
 
@@ -42,7 +42,7 @@ public class SubscriptionService {
     @Transactional(readOnly = true)
     public List<SubscriptionResponse> listSubscriptions(UUID tenantId) {
         tenantService.getTenantEntity(tenantId);
-        return subscriptionRepository.findByTenantIdOrderByCreatedAtDesc(tenantId).stream()
+        return subscriptionRepository.findByTenantIdAndDeletedAtIsNullOrderByCreatedAtDesc(tenantId).stream()
                 .map(SubscriptionResponse::from)
                 .toList();
     }
@@ -56,7 +56,7 @@ public class SubscriptionService {
     public SubscriptionResponse updateSubscription(UUID tenantId, UUID subscriptionId, UpdateSubscriptionRequest request) {
         WebhookSubscription subscription = findSubscription(tenantId, subscriptionId);
         endpointService.getEndpoint(tenantId, request.endpointId());
-        if (subscriptionRepository.existsByEndpointIdAndEventTypeIgnoreCaseAndIdNot(
+        if (subscriptionRepository.existsByEndpointIdAndEventTypeIgnoreCaseAndDeletedAtIsNullAndIdNot(
                 request.endpointId(),
                 request.eventType(),
                 subscriptionId
@@ -77,11 +77,11 @@ public class SubscriptionService {
 
     @Transactional
     public void deleteSubscription(UUID tenantId, UUID subscriptionId) {
-        subscriptionRepository.delete(findSubscription(tenantId, subscriptionId));
+        findSubscription(tenantId, subscriptionId).markDeleted();
     }
 
     private WebhookSubscription findSubscription(UUID tenantId, UUID subscriptionId) {
-        return subscriptionRepository.findByIdAndTenantId(subscriptionId, tenantId)
+        return subscriptionRepository.findByIdAndTenantIdAndDeletedAtIsNull(subscriptionId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subscription not found: " + subscriptionId));
     }
 }

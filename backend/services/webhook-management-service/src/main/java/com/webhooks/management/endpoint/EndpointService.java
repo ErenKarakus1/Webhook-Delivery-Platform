@@ -2,6 +2,7 @@ package com.webhooks.management.endpoint;
 
 import com.webhooks.management.common.DuplicateResourceException;
 import com.webhooks.management.common.ResourceNotFoundException;
+import com.webhooks.management.subscription.SubscriptionRepository;
 import com.webhooks.management.tenant.TenantService;
 import java.util.List;
 import java.util.UUID;
@@ -13,17 +14,20 @@ public class EndpointService {
     private final EndpointRepository endpointRepository;
     private final EndpointSecretGenerator secretGenerator;
     private final EndpointUrlValidator urlValidator;
+    private final SubscriptionRepository subscriptionRepository;
     private final TenantService tenantService;
 
     public EndpointService(
             EndpointRepository endpointRepository,
             EndpointSecretGenerator secretGenerator,
             EndpointUrlValidator urlValidator,
+            SubscriptionRepository subscriptionRepository,
             TenantService tenantService
     ) {
         this.endpointRepository = endpointRepository;
         this.secretGenerator = secretGenerator;
         this.urlValidator = urlValidator;
+        this.subscriptionRepository = subscriptionRepository;
         this.tenantService = tenantService;
     }
 
@@ -31,7 +35,7 @@ public class EndpointService {
     public EndpointResponse createEndpoint(UUID tenantId, CreateEndpointRequest request) {
         tenantService.getTenantEntity(tenantId);
         urlValidator.validate(request.url());
-        if (endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrue(tenantId, request.url())) {
+        if (endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndDeletedAtIsNull(tenantId, request.url())) {
             throw new DuplicateResourceException("An active endpoint already exists for this URL");
         }
         WebhookEndpoint endpoint = endpointRepository.save(
@@ -43,7 +47,7 @@ public class EndpointService {
     @Transactional(readOnly = true)
     public List<EndpointResponse> listEndpoints(UUID tenantId) {
         tenantService.getTenantEntity(tenantId);
-        return endpointRepository.findByTenantIdOrderByCreatedAtDesc(tenantId).stream()
+        return endpointRepository.findByTenantIdAndDeletedAtIsNullOrderByCreatedAtDesc(tenantId).stream()
                 .map(EndpointResponse::from)
                 .toList();
     }
@@ -58,7 +62,7 @@ public class EndpointService {
         WebhookEndpoint endpoint = findEndpoint(tenantId, endpointId);
         urlValidator.validate(request.url());
         if (endpoint.isActive()
-                && endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndIdNot(tenantId, request.url(), endpointId)) {
+                && endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndDeletedAtIsNullAndIdNot(tenantId, request.url(), endpointId)) {
             throw new DuplicateResourceException("An active endpoint already exists for this URL");
         }
         endpoint.setUrl(request.url());
@@ -68,7 +72,7 @@ public class EndpointService {
     @Transactional
     public EndpointResponse setEndpointActive(UUID tenantId, UUID endpointId, boolean active) {
         WebhookEndpoint endpoint = findEndpoint(tenantId, endpointId);
-        if (active && endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndIdNot(tenantId, endpoint.getUrl(), endpointId)) {
+        if (active && endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndDeletedAtIsNullAndIdNot(tenantId, endpoint.getUrl(), endpointId)) {
             throw new DuplicateResourceException("An active endpoint already exists for this URL");
         }
         endpoint.setActive(active);
@@ -78,11 +82,12 @@ public class EndpointService {
     @Transactional
     public void deleteEndpoint(UUID tenantId, UUID endpointId) {
         WebhookEndpoint endpoint = findEndpoint(tenantId, endpointId);
-        endpointRepository.delete(endpoint);
+        endpoint.markDeleted();
+        subscriptionRepository.softDeleteByTenantIdAndEndpointId(tenantId, endpointId);
     }
 
     private WebhookEndpoint findEndpoint(UUID tenantId, UUID endpointId) {
-        return endpointRepository.findByIdAndTenantId(endpointId, tenantId)
+        return endpointRepository.findByIdAndTenantIdAndDeletedAtIsNull(endpointId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Endpoint not found: " + endpointId));
     }
 }

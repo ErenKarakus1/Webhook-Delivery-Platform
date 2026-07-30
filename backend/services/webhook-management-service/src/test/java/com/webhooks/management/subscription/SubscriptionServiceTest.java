@@ -76,7 +76,7 @@ class SubscriptionServiceTest {
         UUID endpointId = UUID.randomUUID();
         when(tenantService.getTenantEntity(tenantId)).thenReturn(new Tenant("Acme"));
         when(endpointService.getEndpoint(tenantId, endpointId)).thenReturn(endpointResponse(tenantId, endpointId));
-        when(subscriptionRepository.existsByEndpointIdAndEventTypeIgnoreCase(endpointId, "order.created")).thenReturn(true);
+        when(subscriptionRepository.existsByEndpointIdAndEventTypeIgnoreCaseAndDeletedAtIsNull(endpointId, "order.created")).thenReturn(true);
 
         assertThatThrownBy(() -> subscriptionService.createSubscription(
                 tenantId,
@@ -93,7 +93,7 @@ class SubscriptionServiceTest {
         UUID endpointId = UUID.randomUUID();
         UUID nextEndpointId = UUID.randomUUID();
         WebhookSubscription subscription = new WebhookSubscription(tenantId, endpointId, "order.created");
-        when(subscriptionRepository.findByIdAndTenantId(subscription.getId(), tenantId)).thenReturn(Optional.of(subscription));
+        when(subscriptionRepository.findByIdAndTenantIdAndDeletedAtIsNull(subscription.getId(), tenantId)).thenReturn(Optional.of(subscription));
         when(endpointService.getEndpoint(tenantId, nextEndpointId)).thenReturn(endpointResponse(tenantId, nextEndpointId));
 
         SubscriptionResponse response = subscriptionService.updateSubscription(
@@ -114,9 +114,9 @@ class SubscriptionServiceTest {
         UUID endpointId = UUID.randomUUID();
         UUID nextEndpointId = UUID.randomUUID();
         WebhookSubscription subscription = new WebhookSubscription(tenantId, endpointId, "order.created");
-        when(subscriptionRepository.findByIdAndTenantId(subscription.getId(), tenantId)).thenReturn(Optional.of(subscription));
+        when(subscriptionRepository.findByIdAndTenantIdAndDeletedAtIsNull(subscription.getId(), tenantId)).thenReturn(Optional.of(subscription));
         when(endpointService.getEndpoint(tenantId, nextEndpointId)).thenReturn(endpointResponse(tenantId, nextEndpointId));
-        when(subscriptionRepository.existsByEndpointIdAndEventTypeIgnoreCaseAndIdNot(
+        when(subscriptionRepository.existsByEndpointIdAndEventTypeIgnoreCaseAndDeletedAtIsNullAndIdNot(
                 nextEndpointId,
                 "invoice.paid",
                 subscription.getId()
@@ -133,7 +133,7 @@ class SubscriptionServiceTest {
     void changesSubscriptionActiveState() {
         UUID tenantId = UUID.randomUUID();
         WebhookSubscription subscription = new WebhookSubscription(tenantId, UUID.randomUUID(), "order.created");
-        when(subscriptionRepository.findByIdAndTenantId(subscription.getId(), tenantId)).thenReturn(Optional.of(subscription));
+        when(subscriptionRepository.findByIdAndTenantIdAndDeletedAtIsNull(subscription.getId(), tenantId)).thenReturn(Optional.of(subscription));
 
         SubscriptionResponse response = subscriptionService.setSubscriptionActive(tenantId, subscription.getId(), false);
 
@@ -142,21 +142,23 @@ class SubscriptionServiceTest {
     }
 
     @Test
-    void deletesTenantScopedSubscription() {
+    void softDeletesTenantScopedSubscription() {
         UUID tenantId = UUID.randomUUID();
         WebhookSubscription subscription = new WebhookSubscription(tenantId, UUID.randomUUID(), "order.created");
-        when(subscriptionRepository.findByIdAndTenantId(subscription.getId(), tenantId)).thenReturn(Optional.of(subscription));
+        when(subscriptionRepository.findByIdAndTenantIdAndDeletedAtIsNull(subscription.getId(), tenantId)).thenReturn(Optional.of(subscription));
 
         subscriptionService.deleteSubscription(tenantId, subscription.getId());
 
-        verify(subscriptionRepository).delete(subscription);
+        assertThat(subscription.isActive()).isFalse();
+        assertThat(subscription.getDeletedAt()).isNotNull();
+        verify(subscriptionRepository, never()).delete(subscription);
     }
 
     @Test
     void throwsWhenSubscriptionDoesNotBelongToTenant() {
         UUID tenantId = UUID.randomUUID();
         UUID subscriptionId = UUID.randomUUID();
-        when(subscriptionRepository.findByIdAndTenantId(subscriptionId, tenantId)).thenReturn(Optional.empty());
+        when(subscriptionRepository.findByIdAndTenantIdAndDeletedAtIsNull(subscriptionId, tenantId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> subscriptionService.getSubscription(tenantId, subscriptionId))
                 .isInstanceOf(ResourceNotFoundException.class)

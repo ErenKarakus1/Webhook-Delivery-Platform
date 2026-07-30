@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.webhooks.management.common.DuplicateResourceException;
 import com.webhooks.management.common.ResourceNotFoundException;
+import com.webhooks.management.subscription.SubscriptionRepository;
 import com.webhooks.management.tenant.Tenant;
 import com.webhooks.management.tenant.TenantService;
 import java.util.Optional;
@@ -22,17 +23,19 @@ class EndpointServiceTest {
     private final EndpointRepository endpointRepository = Mockito.mock(EndpointRepository.class);
     private final EndpointSecretGenerator secretGenerator = Mockito.mock(EndpointSecretGenerator.class);
     private final EndpointUrlValidator urlValidator = Mockito.mock(EndpointUrlValidator.class);
+    private final SubscriptionRepository subscriptionRepository = Mockito.mock(SubscriptionRepository.class);
     private final TenantService tenantService = Mockito.mock(TenantService.class);
     private final EndpointService endpointService = new EndpointService(
             endpointRepository,
             secretGenerator,
             urlValidator,
+            subscriptionRepository,
             tenantService
     );
 
     @BeforeEach
     void setUp() {
-        Mockito.reset(endpointRepository, secretGenerator, urlValidator, tenantService);
+        Mockito.reset(endpointRepository, secretGenerator, urlValidator, subscriptionRepository, tenantService);
     }
 
     @Test
@@ -71,7 +74,7 @@ class EndpointServiceTest {
     void rejectsDuplicateActiveEndpointUrlForTenant() {
         UUID tenantId = UUID.randomUUID();
         when(tenantService.getTenantEntity(tenantId)).thenReturn(new Tenant("Acme"));
-        when(endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrue(
+        when(endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndDeletedAtIsNull(
                 tenantId,
                 "https://example.com/webhooks"
         )).thenReturn(true);
@@ -89,7 +92,7 @@ class EndpointServiceTest {
     void updatesEndpointUrl() {
         UUID tenantId = UUID.randomUUID();
         WebhookEndpoint endpoint = new WebhookEndpoint(tenantId, "https://old.example.com/webhooks", "secret");
-        when(endpointRepository.findByIdAndTenantId(endpoint.getId(), tenantId)).thenReturn(Optional.of(endpoint));
+        when(endpointRepository.findByIdAndTenantIdAndDeletedAtIsNull(endpoint.getId(), tenantId)).thenReturn(Optional.of(endpoint));
 
         EndpointResponse response = endpointService.updateEndpoint(
                 tenantId,
@@ -105,8 +108,8 @@ class EndpointServiceTest {
     void rejectsEndpointUrlUpdateThatDuplicatesActiveEndpoint() {
         UUID tenantId = UUID.randomUUID();
         WebhookEndpoint endpoint = new WebhookEndpoint(tenantId, "https://old.example.com/webhooks", "secret");
-        when(endpointRepository.findByIdAndTenantId(endpoint.getId(), tenantId)).thenReturn(Optional.of(endpoint));
-        when(endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndIdNot(
+        when(endpointRepository.findByIdAndTenantIdAndDeletedAtIsNull(endpoint.getId(), tenantId)).thenReturn(Optional.of(endpoint));
+        when(endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndDeletedAtIsNullAndIdNot(
                 tenantId,
                 "https://new.example.com/webhooks",
                 endpoint.getId()
@@ -123,7 +126,7 @@ class EndpointServiceTest {
     void changesEndpointActiveState() {
         UUID tenantId = UUID.randomUUID();
         WebhookEndpoint endpoint = new WebhookEndpoint(tenantId, "https://example.com/webhooks", "secret");
-        when(endpointRepository.findByIdAndTenantId(endpoint.getId(), tenantId)).thenReturn(Optional.of(endpoint));
+        when(endpointRepository.findByIdAndTenantIdAndDeletedAtIsNull(endpoint.getId(), tenantId)).thenReturn(Optional.of(endpoint));
 
         EndpointResponse response = endpointService.setEndpointActive(tenantId, endpoint.getId(), false);
 
@@ -136,8 +139,8 @@ class EndpointServiceTest {
         UUID tenantId = UUID.randomUUID();
         WebhookEndpoint endpoint = new WebhookEndpoint(tenantId, "https://example.com/webhooks", "secret");
         endpoint.setActive(false);
-        when(endpointRepository.findByIdAndTenantId(endpoint.getId(), tenantId)).thenReturn(Optional.of(endpoint));
-        when(endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndIdNot(
+        when(endpointRepository.findByIdAndTenantIdAndDeletedAtIsNull(endpoint.getId(), tenantId)).thenReturn(Optional.of(endpoint));
+        when(endpointRepository.existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndDeletedAtIsNullAndIdNot(
                 tenantId,
                 "https://example.com/webhooks",
                 endpoint.getId()
@@ -148,21 +151,24 @@ class EndpointServiceTest {
     }
 
     @Test
-    void deletesTenantScopedEndpoint() {
+    void softDeletesTenantScopedEndpointAndSubscriptions() {
         UUID tenantId = UUID.randomUUID();
         WebhookEndpoint endpoint = new WebhookEndpoint(tenantId, "https://example.com/webhooks", "secret");
-        when(endpointRepository.findByIdAndTenantId(endpoint.getId(), tenantId)).thenReturn(Optional.of(endpoint));
+        when(endpointRepository.findByIdAndTenantIdAndDeletedAtIsNull(endpoint.getId(), tenantId)).thenReturn(Optional.of(endpoint));
 
         endpointService.deleteEndpoint(tenantId, endpoint.getId());
 
-        verify(endpointRepository).delete(endpoint);
+        assertThat(endpoint.isActive()).isFalse();
+        assertThat(endpoint.getDeletedAt()).isNotNull();
+        verify(subscriptionRepository).softDeleteByTenantIdAndEndpointId(tenantId, endpoint.getId());
+        verify(endpointRepository, never()).delete(endpoint);
     }
 
     @Test
     void throwsWhenEndpointDoesNotBelongToTenant() {
         UUID tenantId = UUID.randomUUID();
         UUID endpointId = UUID.randomUUID();
-        when(endpointRepository.findByIdAndTenantId(endpointId, tenantId)).thenReturn(Optional.empty());
+        when(endpointRepository.findByIdAndTenantIdAndDeletedAtIsNull(endpointId, tenantId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> endpointService.getEndpoint(tenantId, endpointId))
                 .isInstanceOf(ResourceNotFoundException.class)

@@ -29,6 +29,9 @@ public class WebhookSubscription {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     protected WebhookSubscription() {
     }
 
@@ -80,5 +83,14 @@ public class WebhookSubscription {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void markDeleted() {
+        this.active = false;
+        this.deletedAt = Instant.now();
     }
 }

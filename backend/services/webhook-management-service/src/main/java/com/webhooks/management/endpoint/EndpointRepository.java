@@ -6,11 +6,11 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface EndpointRepository extends JpaRepository<WebhookEndpoint, UUID> {
-    List<WebhookEndpoint> findByTenantIdOrderByCreatedAtDesc(UUID tenantId);
+    List<WebhookEndpoint> findByTenantIdAndDeletedAtIsNullOrderByCreatedAtDesc(UUID tenantId);
 
-    Optional<WebhookEndpoint> findByIdAndTenantId(UUID id, UUID tenantId);
+    Optional<WebhookEndpoint> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
 
-    boolean existsByTenantIdAndUrlIgnoreCaseAndActiveTrue(UUID tenantId, String url);
+    boolean existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndDeletedAtIsNull(UUID tenantId, String url);
 
-    boolean existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndIdNot(UUID tenantId, String url, UUID id);
+    boolean existsByTenantIdAndUrlIgnoreCaseAndActiveTrueAndDeletedAtIsNullAndIdNot(UUID tenantId, String url, UUID id);
 }

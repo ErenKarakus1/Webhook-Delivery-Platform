@@ -20,7 +20,9 @@ public interface SubscriptionRepository extends Repository<SubscriptionRow, UUID
             where subscription.tenantId = :tenantId
               and subscription.eventType = :eventType
               and subscription.active = true
+              and subscription.deletedAt is null
               and endpoint.active = true
+              and endpoint.deletedAt is null
             """)
     List<SubscriptionView> findActiveSubscriptions(
             @Param("tenantId") UUID tenantId,
