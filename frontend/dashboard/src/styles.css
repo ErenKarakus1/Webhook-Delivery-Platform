@@ -236,6 +236,15 @@ label span {
   display: grid;
 }
 
+.scroll-list {
+  max-height: 430px;
+  overflow-y: auto;
+}
+
+.attempts-scroll {
+  max-height: 520px;
+}
+
 .row,
 .compact-row {
   align-items: center;
@@ -391,6 +400,10 @@ label span {
 .row-button:hover,
 .row-button.selected {
   background: #f8fafc;
+}
+
+.row-button:disabled {
+  background: transparent;
 }
 
 .selected-row {

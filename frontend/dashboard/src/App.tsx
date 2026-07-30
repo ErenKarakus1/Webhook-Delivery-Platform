@@ -184,7 +184,7 @@ function App() {
   useEffect(() => {
     localStorage.setItem("tenantId", tenantId);
     localStorage.setItem("apiKey", apiKey);
-  }, [apiKey, selectedEndpoint, tenantId]);
+  }, [apiKey, tenantId]);
 
   useEffect(() => {
     const savedTenantId = localStorage.getItem("tenantId");
@@ -204,7 +204,7 @@ function App() {
     }, 5000);
 
     return () => window.clearInterval(intervalId);
-  }, [apiKey, tenantId]);
+  }, [apiKey, selectedEndpoint, tenantId]);
 
   async function loadDashboard(nextTenantId = tenantId, nextApiKey = apiKey, options: LoadDashboardOptions = {}) {
     if (!nextTenantId || !nextApiKey) {
@@ -293,6 +293,12 @@ function App() {
     setSelectedEndpoint(endpoint);
     setSelectedEvent(null);
     setSelectedEventAttempts([]);
+  }
+
+  function clearEndpointSelection() {
+    setSelectedEndpoint(null);
+    setSelectedEvent((current) => current ?? events[0] ?? null);
+    setSelectedEventAttempts(events[0] ? attempts.filter((attempt) => attempt.eventId === events[0].id) : []);
   }
 
   async function createEndpoint(event: FormEvent<HTMLFormElement>) {
@@ -721,10 +727,11 @@ function App() {
               onChange={(event) => setEventTypeFilter(event.target.value)}
             />
           </div>
-          <div className="list">
+          <div className="list scroll-list">
             {visibleEvents.length > 0 ? visibleEvents.map((event) => (
               <button
                 className={`row row-button ${selectedEvent?.id === event.id ? "selected" : ""}`}
+                disabled={selectedEndpoint !== null}
                 key={event.id}
                 onClick={() => void loadEventDetail(event.id)}
                 type="button"
@@ -795,6 +802,9 @@ function App() {
                 <span>URL</span>
                 <strong>{selectedEndpoint.url}</strong>
               </div>
+              <button className="secondary compact-action" onClick={clearEndpointSelection} type="button">
+                Back to events
+              </button>
             </div>
           )}
           <div className="panel-controls">
@@ -808,7 +818,7 @@ function App() {
               <option value="failed">Failed</option>
             </select>
           </div>
-          <div className="list">
+          <div className="list scroll-list attempts-scroll">
             {recentAttempts.length > 0 ? recentAttempts.map((attempt) => (
               <article className="row attempt" key={attempt.id}>
                 <div>
