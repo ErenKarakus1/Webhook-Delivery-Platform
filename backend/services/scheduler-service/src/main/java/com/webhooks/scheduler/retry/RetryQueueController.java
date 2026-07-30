@@ -3,6 +3,7 @@ package com.webhooks.scheduler.retry;
 import com.webhooks.scheduler.delivery.DeliveryJobPublisher;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -51,5 +52,13 @@ public class RetryQueueController {
         deliveryJobPublisher.publish(entry.getPayload());
         retryQueueRepository.delete(entry);
         return RetryQueueResponse.from(entry);
+    }
+
+    @DeleteMapping("/tenants/{tenantId}/retries/{retryId}")
+    @Transactional
+    void deleteRetry(@PathVariable UUID tenantId, @PathVariable UUID retryId) {
+        RetryQueueEntry entry = retryQueueRepository.findByIdAndTenantId(retryId, tenantId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Retry not found: " + retryId));
+        retryQueueRepository.delete(entry);
     }
 }

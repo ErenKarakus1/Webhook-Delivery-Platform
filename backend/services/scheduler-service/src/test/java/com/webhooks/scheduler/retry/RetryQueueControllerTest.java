@@ -48,6 +48,19 @@ class RetryQueueControllerTest {
                 .hasMessageContaining("Retry not found");
     }
 
+    @Test
+    void deletesRetryWithoutDispatchingIt() throws Exception {
+        UUID tenantId = UUID.randomUUID();
+        UUID retryId = UUID.randomUUID();
+        RetryQueueEntry entry = retryEntry(retryId, job(tenantId));
+        when(retryQueueRepository.findByIdAndTenantId(retryId, tenantId)).thenReturn(Optional.of(entry));
+
+        controller.deleteRetry(tenantId, retryId);
+
+        verify(retryQueueRepository).delete(entry);
+        Mockito.verifyNoInteractions(deliveryJobPublisher);
+    }
+
     private RetryQueueEntry retryEntry(UUID retryId, DeliveryJob job) throws Exception {
         RetryQueueEntry entry = new RetryQueueEntry();
         setField(entry, "id", retryId);

@@ -62,6 +62,10 @@ type Retry = {
   dueAt: string;
 };
 
+type LoadDashboardOptions = {
+  showLoading?: boolean;
+};
+
 type DeadLetteredEvent = {
   id: string;
   eventId: string;
@@ -167,13 +171,28 @@ function App() {
     }
   }, []);
 
-  async function loadDashboard(nextTenantId = tenantId, nextApiKey = apiKey) {
+  useEffect(() => {
+    if (!tenantId || !apiKey) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void loadDashboard(tenantId, apiKey, { showLoading: false });
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [apiKey, tenantId]);
+
+  async function loadDashboard(nextTenantId = tenantId, nextApiKey = apiKey, options: LoadDashboardOptions = {}) {
     if (!nextTenantId || !nextApiKey) {
       setError("Tenant ID and API key are required.");
       return;
     }
 
-    setLoading(true);
+    const showLoading = options.showLoading ?? true;
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -194,12 +213,19 @@ function App() {
       setAttempts(attemptData);
       setRetries(retryData);
       setDeadLetteredEvents(deadLetterData);
-      setSelectedEvent(eventData[0] ?? null);
-      setSelectedEventAttempts(eventData[0] ? attemptData.filter((attempt) => attempt.eventId === eventData[0].id) : []);
+      setSelectedEvent((current) => {
+        const nextSelectedEvent = current
+          ? eventData.find((event) => event.id === current.id) ?? eventData[0] ?? null
+          : eventData[0] ?? null;
+        setSelectedEventAttempts(nextSelectedEvent ? attemptData.filter((attempt) => attempt.eventId === nextSelectedEvent.id) : []);
+        return nextSelectedEvent;
+      });
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not load dashboard data.");
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }
 
@@ -442,6 +468,30 @@ function App() {
     }
   }
 
+  async function deleteRetry(retry: Retry) {
+    if (!tenantId || !apiKey) {
+      setRetryError("Tenant ID and API key are required.");
+      return;
+    }
+
+    setRetryActionLoading(retry.id);
+    setRetryError(null);
+
+    try {
+      await request<void>(
+        `/tenants/${tenantId}/retries/${retry.id}`,
+        { "X-API-Key": apiKey },
+        { method: "DELETE" },
+      );
+      setRetries((current) => current.filter((item) => item.id !== retry.id));
+      await loadDashboard();
+    } catch (exception) {
+      setRetryError(exception instanceof Error ? exception.message : "Could not cancel retry.");
+    } finally {
+      setRetryActionLoading(null);
+    }
+  }
+
   async function deleteDeadLetteredEvent(event: DeadLetteredEvent) {
     if (!tenantId || !apiKey) {
       setDeadLetterError("Tenant ID and API key are required.");
@@ -677,7 +727,7 @@ function App() {
                 <div>
                   <strong>{attemptStatus(attempt)} to {endpointLabel(attempt.endpointId, endpoints)}</strong>
                   <small>Attempt {attempt.attemptNumber}</small>
-                  <span>{attemptDetail(attempt)}</span>
+                  <span>{attemptDetail(attempt)} / Endpoint {shortId(attempt.endpointId)}</span>
                 </div>
                 <span className={`status ${attemptStatus(attempt).toLowerCase()}`}>{attemptStatus(attempt)}</span>
                 <time>{formatDate(attempt.attemptedAt)}</time>
@@ -836,7 +886,7 @@ function App() {
                 <div>
                   <strong>Attempt {retry.attemptNumber}</strong>
                   <small>{endpointLabel(retry.endpointId, endpoints)}</small>
-                  <span>{retry.eventId}</span>
+                  <span>Event {shortId(retry.eventId)} / Endpoint {shortId(retry.endpointId)}</span>
                 </div>
                 <div className="row-actions">
                   <time>{formatDate(retry.dueAt)}</time>
@@ -847,6 +897,14 @@ function App() {
                     type="button"
                   >
                     Retry now
+                  </button>
+                  <button
+                    className="danger compact-action"
+                    disabled={retryActionLoading === retry.id}
+                    onClick={() => void deleteRetry(retry)}
+                    type="button"
+                  >
+                    Cancel
                   </button>
                 </div>
               </article>
@@ -1041,6 +1099,10 @@ function deliveryJobMessage(deliveryJobsPublished: number, duplicate: boolean) {
 
 function endpointLabel(endpointId: string, endpoints: Endpoint[]) {
   return endpoints.find((endpoint) => endpoint.id === endpointId)?.url ?? endpointId;
+}
+
+function shortId(value: string) {
+  return value.slice(0, 8);
 }
 
 function formatDate(value: string) {
