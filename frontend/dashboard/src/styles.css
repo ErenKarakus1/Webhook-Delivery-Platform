@@ -429,6 +429,16 @@ label span {
   padding: 10px 12px;
 }
 
+.form-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #991b1b;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 10px 12px;
+}
+
 .status {
   border-radius: 999px;
   font-size: 13px;

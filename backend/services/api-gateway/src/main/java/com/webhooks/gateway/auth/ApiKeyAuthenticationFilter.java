@@ -123,6 +123,9 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     private void reject(HttpServletResponse response, HttpStatus status, String code, String message) throws IOException {
         response.setStatus(status.value());
         response.setContentType("application/json");
+        response.setHeader("Access-Control-Allow-Origin", "*");
+        response.setHeader("Access-Control-Allow-Headers", "Content-Type, X-API-Key, X-Admin-Key, Idempotency-Key");
+        response.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
         response.getWriter().write("{\"code\":\"" + code + "\",\"message\":\"" + message + "\"}");
     }
 }

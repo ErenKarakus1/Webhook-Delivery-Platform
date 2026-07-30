@@ -121,6 +121,7 @@ function App() {
   const [eventLoading, setEventLoading] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [endpointError, setEndpointError] = useState<string | null>(null);
   const [sendResult, setSendResult] = useState<string | null>(null);
 
   const stats = useMemo(() => {
@@ -222,23 +223,30 @@ function App() {
   async function createEndpoint(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!tenantId || !apiKey) {
-      setError("Tenant ID and API key are required.");
+      setEndpointError("Tenant ID and API key are required.");
       return;
     }
     if (!endpointUrl.trim()) {
-      setError("Endpoint URL is required.");
+      setEndpointError("Endpoint URL is required.");
       return;
     }
 
     const normalizedUrl = endpointUrl.trim();
+    const urlError = validateEndpointUrl(normalizedUrl);
+    if (urlError) {
+      setEndpointError(urlError);
+      return;
+    }
+
     if (endpoints.some((endpoint) => endpoint.url.toLowerCase() === normalizedUrl.toLowerCase())) {
       setEndpointUrl("");
-      setError("That endpoint already exists.");
+      setEndpointError("That endpoint already exists.");
       return;
     }
 
     setEndpointLoading(true);
     setError(null);
+    setEndpointError(null);
 
     try {
       const endpoint = await request<Endpoint>(`/tenants/${tenantId}/endpoints`, { "X-API-Key": apiKey }, {
@@ -250,7 +258,7 @@ function App() {
       setEndpointUrl("");
       await loadDashboard();
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : "Could not create endpoint.");
+      setEndpointError(endpointApiErrorMessage(exception));
     } finally {
       setEndpointLoading(false);
     }
@@ -686,6 +694,7 @@ function App() {
                 />
                 <button type="submit" disabled={endpointLoading}>Add</button>
               </form>
+              {endpointError && <p className="form-error" role="alert">{endpointError}</p>}
               <SimpleList empty="No endpoints configured.">
                 {endpoints.slice(0, 4).map((endpoint) => (
                   <article className="compact-row" key={endpoint.id}>
@@ -911,7 +920,7 @@ async function request<T>(path: string, headers: Record<string, string>, init: R
 
 function networkErrorMessage(exception: unknown) {
   if (exception instanceof TypeError && exception.message.toLowerCase().includes("failed to fetch")) {
-    return "API is unavailable right now. Start the services and try again.";
+    return "The API did not respond. Try again after the services finish starting.";
   }
   return exception instanceof Error ? exception.message : "Could not reach the API.";
 }
@@ -942,7 +951,39 @@ function friendlyApiMessage(status: number, code: string | undefined, message: s
   if (status === 429 || code === "rate_limit_exceeded") {
     return message || "Rate limit exceeded. Wait a moment and try again.";
   }
+  if (status === 400 && message === "400") {
+    return "Request is invalid. Check the fields and try again.";
+  }
   return message;
+}
+
+function validateEndpointUrl(value: string) {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return "Enter a valid HTTPS URL.";
+  }
+  if (url.protocol !== "https:") {
+    return "Endpoint URL must start with https://.";
+  }
+  if (!url.hostname) {
+    return "Endpoint URL must include a host.";
+  }
+  if (url.username || url.password) {
+    return "Endpoint URL must not include username or password.";
+  }
+  return null;
+}
+
+function endpointApiErrorMessage(exception: unknown) {
+  if (!(exception instanceof ApiRequestError)) {
+    return exception instanceof Error ? exception.message : "Could not create endpoint.";
+  }
+  if (exception.status === 400 && exception.message === "400") {
+    return "Enter a valid HTTPS URL.";
+  }
+  return exception.message;
 }
 
 function attemptStatus(attempt: Attempt) {
