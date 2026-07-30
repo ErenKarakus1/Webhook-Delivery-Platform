@@ -4,7 +4,7 @@
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3-6DB33F?logo=springboot)
 ![Kafka](https://img.shields.io/badge/Kafka-3.7-231F20?logo=apachekafka)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
 
@@ -279,4 +279,6 @@ docker compose config
 
 ## License
 
-This project is licensed under the MIT License.
+MIT License
+
+Copyright (c) 2026 Eren Karakuş

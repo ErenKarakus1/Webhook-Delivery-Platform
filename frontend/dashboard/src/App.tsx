@@ -162,7 +162,7 @@ function App() {
     }
     return events.filter((event) => event.eventType.toLowerCase().includes(normalizedFilter));
   }, [eventTypeFilter, events]);
-  const visibleEvents = filteredEvents.slice(0, 8);
+  const visibleEvents = filteredEvents;
 
   const baseAttempts = selectedEndpoint
     ? attempts.filter((attempt) => attempt.endpointId === selectedEndpoint.id)
@@ -768,7 +768,7 @@ function App() {
               onChange={(event) => setEventTypeFilter(event.target.value)}
             />
           </div>
-          <div className="list scroll-list">
+          <div className="list scroll-list events-scroll">
             {visibleEvents.length > 0 ? visibleEvents.map((event) => (
               <button
                 className={`row row-button ${selectedEvent?.id === event.id ? "selected" : ""}`}

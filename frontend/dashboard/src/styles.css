@@ -196,6 +196,7 @@ label span {
 }
 
 .workspace {
+  align-items: stretch;
   display: grid;
   gap: 18px;
   grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1fr) minmax(0, 1fr);
@@ -210,6 +211,9 @@ label span {
 }
 
 .panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -255,12 +259,14 @@ label span {
 }
 
 .scroll-list {
-  max-height: 430px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
+.events-scroll,
 .attempts-scroll {
-  max-height: 520px;
+  min-height: 360px;
 }
 
 .row,
