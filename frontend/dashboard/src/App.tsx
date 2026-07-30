@@ -1,5 +1,5 @@
 import React, { FormEvent, useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, Bell, Clock, RefreshCcw, X } from "lucide-react";
+import { Activity, AlertTriangle, Bell, Clock, RefreshCcw } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -121,7 +121,11 @@ function App() {
   const [eventLoading, setEventLoading] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [endpointError, setEndpointError] = useState<string | null>(null);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  const [retryError, setRetryError] = useState<string | null>(null);
+  const [deadLetterError, setDeadLetterError] = useState<string | null>(null);
   const [sendResult, setSendResult] = useState<string | null>(null);
 
   const stats = useMemo(() => {
@@ -154,6 +158,14 @@ function App() {
     localStorage.setItem("tenantId", tenantId);
     localStorage.setItem("apiKey", apiKey);
   }, [apiKey, tenantId]);
+
+  useEffect(() => {
+    const savedTenantId = localStorage.getItem("tenantId");
+    const savedApiKey = localStorage.getItem("apiKey");
+    if (savedTenantId && savedApiKey) {
+      void loadDashboard(savedTenantId, savedApiKey);
+    }
+  }, []);
 
   async function loadDashboard(nextTenantId = tenantId, nextApiKey = apiKey) {
     if (!nextTenantId || !nextApiKey) {
@@ -266,12 +278,12 @@ function App() {
 
   async function setEndpointActive(endpoint: Endpoint, active: boolean) {
     if (!tenantId || !apiKey) {
-      setError("Tenant ID and API key are required.");
+      setEndpointError("Tenant ID and API key are required.");
       return;
     }
 
     setEndpointActionLoading(endpoint.id);
-    setError(null);
+    setEndpointError(null);
 
     try {
       const updatedEndpoint = await request<Endpoint>(
@@ -282,7 +294,7 @@ function App() {
       setEndpoints((current) => current.map((item) => item.id === updatedEndpoint.id ? updatedEndpoint : item));
       await loadDashboard();
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : "Could not update endpoint.");
+      setEndpointError(exception instanceof Error ? exception.message : "Could not update endpoint.");
     } finally {
       setEndpointActionLoading(null);
     }
@@ -290,12 +302,12 @@ function App() {
 
   async function deleteEndpoint(endpoint: Endpoint) {
     if (!tenantId || !apiKey) {
-      setError("Tenant ID and API key are required.");
+      setEndpointError("Tenant ID and API key are required.");
       return;
     }
 
     setEndpointActionLoading(endpoint.id);
-    setError(null);
+    setEndpointError(null);
 
     try {
       await request<void>(
@@ -308,7 +320,7 @@ function App() {
       setSubscriptionEndpointId((current) => current === endpoint.id ? "" : current);
       await loadDashboard();
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : "Could not delete endpoint.");
+      setEndpointError(exception instanceof Error ? exception.message : "Could not delete endpoint.");
     } finally {
       setEndpointActionLoading(null);
     }
@@ -317,15 +329,15 @@ function App() {
   async function createSubscription(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!tenantId || !apiKey) {
-      setError("Tenant ID and API key are required.");
+      setSubscriptionError("Tenant ID and API key are required.");
       return;
     }
     if (!subscriptionEndpointId) {
-      setError("Select an endpoint for the subscription.");
+      setSubscriptionError("Select an endpoint for the subscription.");
       return;
     }
     if (!subscriptionEventType.trim()) {
-      setError("Subscription event type is required.");
+      setSubscriptionError("Subscription event type is required.");
       return;
     }
 
@@ -334,12 +346,12 @@ function App() {
       subscription.endpointId === subscriptionEndpointId
       && subscription.eventType.toLowerCase() === normalizedEventType.toLowerCase()
     ))) {
-      setError("That endpoint already has a subscription for this event type. Use the existing subscription or reactivate it.");
+      setSubscriptionError("That endpoint already has a subscription for this event type.");
       return;
     }
 
     setSubscriptionLoading(true);
-    setError(null);
+    setSubscriptionError(null);
 
     try {
       const subscription = await request<Subscription>(`/tenants/${tenantId}/subscriptions`, { "X-API-Key": apiKey }, {
@@ -352,7 +364,7 @@ function App() {
       setSubscriptions((current) => [subscription, ...current]);
       await loadDashboard();
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : "Could not create subscription.");
+      setSubscriptionError(exception instanceof Error ? exception.message : "Could not create subscription.");
     } finally {
       setSubscriptionLoading(false);
     }
@@ -360,12 +372,12 @@ function App() {
 
   async function setSubscriptionActive(subscription: Subscription, active: boolean) {
     if (!tenantId || !apiKey) {
-      setError("Tenant ID and API key are required.");
+      setSubscriptionError("Tenant ID and API key are required.");
       return;
     }
 
     setSubscriptionActionLoading(subscription.id);
-    setError(null);
+    setSubscriptionError(null);
 
     try {
       const updatedSubscription = await request<Subscription>(
@@ -376,7 +388,7 @@ function App() {
       setSubscriptions((current) => current.map((item) => item.id === updatedSubscription.id ? updatedSubscription : item));
       await loadDashboard();
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : "Could not update subscription.");
+      setSubscriptionError(exception instanceof Error ? exception.message : "Could not update subscription.");
     } finally {
       setSubscriptionActionLoading(null);
     }
@@ -384,12 +396,12 @@ function App() {
 
   async function deleteSubscription(subscription: Subscription) {
     if (!tenantId || !apiKey) {
-      setError("Tenant ID and API key are required.");
+      setSubscriptionError("Tenant ID and API key are required.");
       return;
     }
 
     setSubscriptionActionLoading(subscription.id);
-    setError(null);
+    setSubscriptionError(null);
 
     try {
       await request<void>(
@@ -400,7 +412,7 @@ function App() {
       setSubscriptions((current) => current.filter((item) => item.id !== subscription.id));
       await loadDashboard();
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : "Could not delete subscription.");
+      setSubscriptionError(exception instanceof Error ? exception.message : "Could not delete subscription.");
     } finally {
       setSubscriptionActionLoading(null);
     }
@@ -408,12 +420,12 @@ function App() {
 
   async function dispatchRetry(retry: Retry) {
     if (!tenantId || !apiKey) {
-      setError("Tenant ID and API key are required.");
+      setRetryError("Tenant ID and API key are required.");
       return;
     }
 
     setRetryActionLoading(retry.id);
-    setError(null);
+    setRetryError(null);
 
     try {
       await request<Retry>(
@@ -424,7 +436,7 @@ function App() {
       setRetries((current) => current.filter((item) => item.id !== retry.id));
       await loadDashboard();
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : "Could not dispatch retry.");
+      setRetryError(exception instanceof Error ? exception.message : "Could not dispatch retry.");
     } finally {
       setRetryActionLoading(null);
     }
@@ -432,12 +444,12 @@ function App() {
 
   async function deleteDeadLetteredEvent(event: DeadLetteredEvent) {
     if (!tenantId || !apiKey) {
-      setError("Tenant ID and API key are required.");
+      setDeadLetterError("Tenant ID and API key are required.");
       return;
     }
 
     setDeadLetterActionLoading(event.id);
-    setError(null);
+    setDeadLetterError(null);
 
     try {
       await request<void>(
@@ -448,7 +460,7 @@ function App() {
       setDeadLetteredEvents((current) => current.filter((item) => item.id !== event.id));
       await loadDashboard();
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : "Could not clear dead-lettered event.");
+      setDeadLetterError(exception instanceof Error ? exception.message : "Could not clear dead-lettered event.");
     } finally {
       setDeadLetterActionLoading(null);
     }
@@ -457,11 +469,11 @@ function App() {
   async function ingestEvent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!tenantId || !apiKey) {
-      setError("Tenant ID and API key are required.");
+      setSendError("Tenant ID and API key are required.");
       return;
     }
     if (!eventType.trim()) {
-      setError("Event type is required.");
+      setSendError("Event type is required.");
       return;
     }
 
@@ -469,12 +481,12 @@ function App() {
     try {
       payload = JSON.parse(eventPayload);
     } catch {
-      setError("Event payload must be valid JSON.");
+      setSendError("Event payload must be valid JSON.");
       return;
     }
 
     setEventLoading(true);
-    setError(null);
+    setSendError(null);
     setSendResult(null);
 
     try {
@@ -499,7 +511,7 @@ function App() {
       await waitForEventAttempts(createdEvent.id);
       await loadDashboard();
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : "Could not ingest event.");
+      setSendError(exception instanceof Error ? exception.message : "Could not ingest event.");
     } finally {
       setEventLoading(false);
     }
@@ -574,9 +586,6 @@ function App() {
       {error && (
         <div className="error" role="alert">
           <span>{error}</span>
-          <button aria-label="Dismiss error" className="icon-button error-dismiss" onClick={() => setError(null)} type="button">
-            <X size={16} aria-hidden="true" />
-          </button>
         </div>
       )}
 
@@ -607,6 +616,7 @@ function App() {
               <textarea value={eventPayload} onChange={(event) => setEventPayload(event.target.value)} spellCheck={false} />
             </label>
             <button type="submit" disabled={eventLoading}>Send event</button>
+            {sendError && <p className="form-error" role="alert">{sendError}</p>}
             {sendResult && <p className="result-message">{sendResult}</p>}
           </form>
         </section>
@@ -779,6 +789,7 @@ function App() {
                 />
                 <button type="submit" disabled={subscriptionLoading}>Add</button>
               </form>
+              {subscriptionError && <p className="form-error" role="alert">{subscriptionError}</p>}
               <SimpleList empty="No subscriptions configured.">
                 {subscriptions.slice(0, 4).map((subscription) => (
                   <article className="compact-row" key={subscription.id}>
@@ -819,6 +830,7 @@ function App() {
         <summary>Advanced queues</summary>
         <div className="advanced-grid">
           <Queue title="Retry queue" empty="No pending retries.">
+            {retryError && <p className="form-error queue-error" role="alert">{retryError}</p>}
             {retries.slice(0, 5).map((retry) => (
               <article className="compact-row" key={retry.id}>
                 <div>
@@ -841,6 +853,7 @@ function App() {
             ))}
           </Queue>
           <Queue title="Dead letters" empty="No dead-lettered events.">
+            {deadLetterError && <p className="form-error queue-error" role="alert">{deadLetterError}</p>}
             {deadLetteredEvents.slice(0, 5).map((event) => (
               <article className="compact-row" key={event.id}>
                 <div>

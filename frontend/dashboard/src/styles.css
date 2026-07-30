@@ -143,23 +143,12 @@ label span {
 }
 
 .error {
-  align-items: start;
   background: #fee2e2;
   border: 1px solid #fecaca;
   border-radius: 6px;
   color: #991b1b;
-  display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(0, 1fr) auto;
   margin-bottom: 16px;
   padding: 12px 14px;
-}
-
-.error-dismiss {
-  background: #fecaca;
-  color: #991b1b;
-  min-height: 28px;
-  width: 28px;
 }
 
 .stats {
@@ -437,6 +426,10 @@ label span {
   font-size: 14px;
   font-weight: 700;
   padding: 10px 12px;
+}
+
+.queue-error {
+  margin: 14px 16px 0;
 }
 
 .status {
