@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Mono;
 
 class DeadLetteredEventControllerTest {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -58,15 +59,15 @@ class DeadLetteredEventControllerTest {
         UUID deadLetterId = UUID.randomUUID();
         DeadLetteredEvent event = deadLetteredEvent(tenantId);
         when(repository.findByIdAndTenantId(deadLetterId, tenantId)).thenReturn(Optional.of(event));
-        when(endpointClient.getEndpoint(tenantId, event.getEndpointId())).thenReturn(new EndpointClient.EndpointDetails(
+        when(endpointClient.getEndpoint(tenantId, event.getEndpointId())).thenReturn(Mono.just(new EndpointClient.EndpointDetails(
                 event.getEndpointId(),
                 tenantId,
                 "https://example.com/webhooks",
                 "secret",
                 true
-        ));
+        )));
 
-        DeadLetteredEventResponse response = controller.replayDeadLetteredEvent(tenantId, deadLetterId);
+        DeadLetteredEventResponse response = controller.replayDeadLetteredEvent(tenantId, deadLetterId).block();
 
         ArgumentCaptor<DeliveryJob> jobCaptor = ArgumentCaptor.forClass(DeliveryJob.class);
         verify(deliveryJobPublisher).publish(jobCaptor.capture());
@@ -84,15 +85,15 @@ class DeadLetteredEventControllerTest {
         UUID deadLetterId = UUID.randomUUID();
         DeadLetteredEvent event = deadLetteredEvent(tenantId);
         when(repository.findByIdAndTenantId(deadLetterId, tenantId)).thenReturn(Optional.of(event));
-        when(endpointClient.getEndpoint(tenantId, event.getEndpointId())).thenReturn(new EndpointClient.EndpointDetails(
+        when(endpointClient.getEndpoint(tenantId, event.getEndpointId())).thenReturn(Mono.just(new EndpointClient.EndpointDetails(
                 event.getEndpointId(),
                 tenantId,
                 "https://example.com/webhooks",
                 "secret",
                 false
-        ));
+        )));
 
-        assertThatThrownBy(() -> controller.replayDeadLetteredEvent(tenantId, deadLetterId))
+        assertThatThrownBy(() -> controller.replayDeadLetteredEvent(tenantId, deadLetterId).block())
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Endpoint is inactive");
     }

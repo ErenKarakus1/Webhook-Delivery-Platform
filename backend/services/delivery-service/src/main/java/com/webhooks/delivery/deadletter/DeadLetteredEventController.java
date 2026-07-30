@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Mono;
 
 @RestController
 public class DeadLetteredEventController {
@@ -45,10 +46,14 @@ public class DeadLetteredEventController {
     }
 
     @PostMapping("/tenants/{tenantId}/dead-lettered-events/{deadLetterId}/replay")
-    DeadLetteredEventResponse replayDeadLetteredEvent(@PathVariable UUID tenantId, @PathVariable UUID deadLetterId) {
+    Mono<DeadLetteredEventResponse> replayDeadLetteredEvent(@PathVariable UUID tenantId, @PathVariable UUID deadLetterId) {
         DeadLetteredEvent event = repository.findByIdAndTenantId(deadLetterId, tenantId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dead-lettered event not found: " + deadLetterId));
-        EndpointClient.EndpointDetails endpoint = endpointClient.getEndpoint(tenantId, event.getEndpointId());
+        return endpointClient.getEndpoint(tenantId, event.getEndpointId())
+                .map(endpoint -> replay(event, endpoint));
+    }
+
+    private DeadLetteredEventResponse replay(DeadLetteredEvent event, EndpointClient.EndpointDetails endpoint) {
         if (!endpoint.active()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Endpoint is inactive. Activate it before replaying.");
         }

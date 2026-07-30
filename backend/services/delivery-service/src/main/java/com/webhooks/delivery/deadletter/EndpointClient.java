@@ -21,7 +21,7 @@ public class EndpointClient {
         this.webClient = webClientBuilder.build();
     }
 
-    EndpointDetails getEndpoint(UUID tenantId, UUID endpointId) {
+    Mono<EndpointDetails> getEndpoint(UUID tenantId, UUID endpointId) {
         return webClient.get()
                 .uri(managementBaseUrl + "/tenants/{tenantId}/endpoints/{endpointId}", tenantId, endpointId)
                 .retrieve()
@@ -29,8 +29,7 @@ public class EndpointClient {
                         response.statusCode(),
                         "Endpoint not available for replay: " + endpointId
                 )))
-                .bodyToMono(EndpointDetails.class)
-                .block();
+                .bodyToMono(EndpointDetails.class);
     }
 
     record EndpointDetails(
