@@ -232,7 +232,8 @@ function App() {
 
     const normalizedUrl = endpointUrl.trim();
     if (endpoints.some((endpoint) => endpoint.url.toLowerCase() === normalizedUrl.toLowerCase())) {
-      setError("That endpoint URL already exists. Use the existing endpoint or reactivate it.");
+      setEndpointUrl("");
+      setError("That endpoint already exists.");
       return;
     }
 
@@ -247,6 +248,7 @@ function App() {
       setEndpoints((current) => [endpoint, ...current]);
       setSubscriptionEndpointId((current) => current || endpoint.id);
       setEndpointUrl("");
+      await loadDashboard();
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not create endpoint.");
     } finally {
@@ -270,6 +272,7 @@ function App() {
         { method: "PATCH" },
       );
       setEndpoints((current) => current.map((item) => item.id === updatedEndpoint.id ? updatedEndpoint : item));
+      await loadDashboard();
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not update endpoint.");
     } finally {
@@ -295,6 +298,7 @@ function App() {
       setEndpoints((current) => current.filter((item) => item.id !== endpoint.id));
       setSubscriptions((current) => current.filter((item) => item.endpointId !== endpoint.id));
       setSubscriptionEndpointId((current) => current === endpoint.id ? "" : current);
+      await loadDashboard();
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not delete endpoint.");
     } finally {
@@ -338,6 +342,7 @@ function App() {
         }),
       });
       setSubscriptions((current) => [subscription, ...current]);
+      await loadDashboard();
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not create subscription.");
     } finally {
@@ -361,6 +366,7 @@ function App() {
         { method: "PATCH" },
       );
       setSubscriptions((current) => current.map((item) => item.id === updatedSubscription.id ? updatedSubscription : item));
+      await loadDashboard();
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not update subscription.");
     } finally {
@@ -384,6 +390,7 @@ function App() {
         { method: "DELETE" },
       );
       setSubscriptions((current) => current.filter((item) => item.id !== subscription.id));
+      await loadDashboard();
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not delete subscription.");
     } finally {
@@ -407,6 +414,7 @@ function App() {
         { method: "POST" },
       );
       setRetries((current) => current.filter((item) => item.id !== retry.id));
+      await loadDashboard();
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not dispatch retry.");
     } finally {
@@ -430,6 +438,7 @@ function App() {
         { method: "DELETE" },
       );
       setDeadLetteredEvents((current) => current.filter((item) => item.id !== event.id));
+      await loadDashboard();
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not clear dead-lettered event.");
     } finally {
@@ -480,6 +489,7 @@ function App() {
       setIdempotencyKey("");
       setSendResult(deliveryJobMessage(response.deliveryJobsPublished, response.duplicate));
       await waitForEventAttempts(createdEvent.id);
+      await loadDashboard();
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Could not ingest event.");
     } finally {
@@ -901,7 +911,7 @@ async function request<T>(path: string, headers: Record<string, string>, init: R
 
 function networkErrorMessage(exception: unknown) {
   if (exception instanceof TypeError && exception.message.toLowerCase().includes("failed to fetch")) {
-    return "Could not reach the API. Check that Docker is running and the gateway is available at http://localhost:8080.";
+    return "API is unavailable right now. Start the services and try again.";
   }
   return exception instanceof Error ? exception.message : "Could not reach the API.";
 }

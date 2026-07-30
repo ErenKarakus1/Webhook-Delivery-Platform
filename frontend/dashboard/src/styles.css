@@ -147,20 +147,12 @@ label span {
   background: #fee2e2;
   border: 1px solid #fecaca;
   border-radius: 6px;
-  box-shadow: 0 16px 36px rgba(23, 32, 42, 0.16);
   color: #991b1b;
   display: grid;
   gap: 12px;
   grid-template-columns: minmax(0, 1fr) auto;
-  left: 50%;
-  margin: 0;
-  max-width: 960px;
+  margin-bottom: 16px;
   padding: 12px 14px;
-  position: fixed;
-  top: 12px;
-  transform: translateX(-50%);
-  width: calc(100% - 36px);
-  z-index: 50;
 }
 
 .error-dismiss {
