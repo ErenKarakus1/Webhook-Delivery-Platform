@@ -5,6 +5,22 @@ import "./styles.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const ADMIN_API_KEY = import.meta.env.VITE_ADMIN_API_KEY ?? "local-admin-key";
+const NODE_VERIFICATION_SNIPPET = [
+  'import crypto from "node:crypto";',
+  "",
+  "function verifyWebhook({ rawBody, secret, signature, timestamp }) {",
+  "  const signedPayload = `${timestamp}.${rawBody}`;",
+  '  const expected = "sha256=" + crypto',
+  '    .createHmac("sha256", secret)',
+  "    .update(signedPayload)",
+  '    .digest("hex");',
+  "",
+  "  const expectedBuffer = Buffer.from(expected);",
+  "  const signatureBuffer = Buffer.from(signature);",
+  "  return expectedBuffer.length === signatureBuffer.length &&",
+  "    crypto.timingSafeEqual(expectedBuffer, signatureBuffer);",
+  "}",
+].join("\n");
 
 type Endpoint = {
   id: string;
@@ -556,6 +572,34 @@ function App() {
                       <details className="secret-detail">
                         <summary>Show signing secret</summary>
                         <code>{endpoint.secret}</code>
+                        <details className="verification-detail">
+                          <summary>Verification example</summary>
+                          <dl className="verification-list">
+                            <div>
+                              <dt>Signed payload</dt>
+                              <dd>
+                                <code>timestamp + "." + rawBody</code>
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>Algorithm</dt>
+                              <dd>HMAC-SHA256 with the endpoint secret</dd>
+                            </div>
+                            <div>
+                              <dt>Compare against</dt>
+                              <dd>
+                                <code>X-Webhook-Signature</code>
+                              </dd>
+                            </div>
+                          </dl>
+                          <pre>
+                            <code>{NODE_VERIFICATION_SNIPPET}</code>
+                          </pre>
+                          <p className="verification-note">
+                            Use the raw request body before JSON parsing, plus the{" "}
+                            <code>X-Webhook-Timestamp</code> header.
+                          </p>
+                        </details>
                       </details>
                     </div>
                     <button

@@ -276,7 +276,7 @@ label span {
   font-weight: 700;
 }
 
-.secret-detail code {
+.secret-detail > code {
   background: #f8fafc;
   border: 1px solid #e3e8ef;
   border-radius: 6px;
@@ -286,6 +286,66 @@ label span {
   overflow-wrap: anywhere;
   padding: 8px;
   white-space: normal;
+}
+
+.verification-detail {
+  margin-top: 8px;
+}
+
+.verification-list {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.verification-list div {
+  display: grid;
+  gap: 2px;
+}
+
+.verification-list dt {
+  color: #344054;
+  font-weight: 700;
+}
+
+.verification-list dd {
+  color: #667085;
+  margin: 0;
+}
+
+.verification-list code,
+.verification-note code {
+  background: #f8fafc;
+  border: 1px solid #e3e8ef;
+  border-radius: 4px;
+  color: #17202a;
+  padding: 1px 4px;
+}
+
+.secret-detail pre {
+  background: #111827;
+  border-radius: 6px;
+  color: #e5e7eb;
+  margin: 8px 0;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 10px;
+}
+
+.secret-detail pre code {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  display: block;
+  margin: 0;
+  overflow-wrap: normal;
+  padding: 0;
+  white-space: pre;
+}
+
+.verification-note {
+  color: #667085;
+  margin: 0;
 }
 
 .row-button {
