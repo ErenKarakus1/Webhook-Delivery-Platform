@@ -139,6 +139,12 @@ docker compose down
 
 Local defaults live in `docker-compose.yml`. Copy `.env.example` when you want to override ports, credentials, admin API key, or rate limits:
 
+```bash
+cp .env.example .env
+```
+
+PowerShell:
+
 ```powershell
 Copy-Item .env.example .env
 ```
