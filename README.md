@@ -10,6 +10,12 @@
 
 A microservices-based webhook delivery platform built with Java, Spring Boot, PostgreSQL, Redis, Kafka, Docker, and React. The project demonstrates practical backend infrastructure patterns: tenant API keys, endpoint and subscription management, idempotent event ingestion, Kafka-based asynchronous delivery, HMAC webhook signatures, retry scheduling, dead-letter replay, rate limiting, and a Docker Compose demo environment.
 
+## Demo Video
+
+[![Webhook Delivery Platform demo video](https://img.youtube.com/vi/dX0FkTvRl-M/hqdefault.jpg)](https://youtu.be/dX0FkTvRl-M)
+
+▶ **Click the image above to play the demo video**
+
 ## Features
 
 - Tenant and API key bootstrap flow
