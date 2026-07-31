@@ -12,7 +12,7 @@ A microservices-based webhook delivery platform built with Java, Spring Boot, Po
 
 ## Demo Video
 
-[![Webhook Delivery Platform demo video](https://img.youtube.com/vi/dX0FkTvRl-M/hqdefault.jpg)](https://youtu.be/dX0FkTvRl-M)
+[![Webhook Delivery Platform demo video](https://img.youtube.com/vi/dX0FkTvRl-M/maxresdefault.jpg)](https://youtu.be/dX0FkTvRl-M)
 
 ▶ **Click the image above to play the demo video**
 
