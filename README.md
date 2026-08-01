@@ -8,7 +8,7 @@
 ![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
 
-A microservices-based webhook delivery platform built with Java, Spring Boot, PostgreSQL, Redis, Kafka, Docker, and React. The project demonstrates practical backend infrastructure patterns: tenant API keys, endpoint and subscription management, idempotent event ingestion, Kafka-based asynchronous delivery, HMAC webhook signatures, retry scheduling, dead-letter replay, rate limiting, and a Docker Compose demo environment.
+A microservices-based webhook delivery platform built with Java, Spring Boot, PostgreSQL, Redis, Kafka, Docker, and React. It demonstrates practical backend infrastructure patterns: tenant API keys, endpoint and subscription management, idempotent event ingestion, Kafka-based asynchronous delivery, HMAC webhook signatures, retry scheduling, dead-letter replay, rate limiting, and a Docker Compose demo environment.
 
 ## Demo Video
 
@@ -74,7 +74,7 @@ docker compose up -d --build
 
 The Compose demo starts PostgreSQL, Flyway, Redis, Kafka, all Spring services, and the React dashboard.
 
-Open:
+Open the local services:
 
 ```text
 Dashboard: http://localhost:3000
@@ -87,7 +87,7 @@ Check the gateway health endpoint:
 curl http://localhost:8080/actuator/health
 ```
 
-Create a tenant from the dashboard, or load repeatable demo data:
+Create a tenant from the dashboard, or load the repeatable demo data:
 
 ```bash
 docker compose --profile seed up seed-demo
@@ -100,14 +100,14 @@ Tenant ID: 11111111-1111-1111-1111-111111111111
 API key: demo-api-key
 ```
 
-Then:
+In the dashboard:
 
 ```text
 1. Add a reachable HTTPS webhook endpoint.
 2. Add a subscription for an event type such as order.created.
 3. Send a test event.
 4. Select the event to inspect its payload and delivery attempts.
-5. Open the retry and dead-letter queues to retry, cancel, clear, or replay failed deliveries.
+5. Use the retry and dead-letter queues to retry, cancel, clear, or replay failed deliveries.
 ```
 
 Run the smoke test:
@@ -137,7 +137,7 @@ docker compose down
 
 ## Configuration
 
-Local defaults live in `docker-compose.yml`. Copy `.env.example` when you want to override ports, credentials, admin API key, or rate limits:
+Local defaults live in `docker-compose.yml`. Copy `.env.example` to override ports, credentials, the admin API key, or rate limits:
 
 ```bash
 cp .env.example .env
@@ -192,17 +192,17 @@ The dashboard shows each endpoint secret and a Node.js verification example.
 - `GET /tenants/{tenantId}/attempts`: list delivery attempts
 - `GET /tenants/{tenantId}/retries`: list retry queue
 - `POST /tenants/{tenantId}/retries/{retryId}/dispatch`: retry now
-- `GET /tenants/{tenantId}/dead-lettered-events`: list dead letters
-- `POST /tenants/{tenantId}/dead-lettered-events/{deadLetterId}/replay`: replay dead letter
+- `GET /tenants/{tenantId}/dead-lettered-events`: list dead-lettered events
+- `POST /tenants/{tenantId}/dead-lettered-events/{deadLetterId}/replay`: replay a dead-lettered event
 
 ## Known Limitations
 
 - Authentication is API-key based for the MVP. A production system would typically add user accounts, OAuth/OIDC, scoped tokens, and key rotation.
-- Webhook endpoint validation is intentionally strict and rejects hosts that cannot be resolved.
+- Webhook endpoint validation is intentionally strict and rejects hosts that do not resolve.
 - Retry policy is fixed in service configuration rather than editable per endpoint.
 - Kafka topics are auto-created in the local demo.
 - The dashboard is a local portfolio/demo UI rather than a multi-user admin product.
-- Docker Compose is intended for local demonstration, not hardened production deployment.
+- Docker Compose is intended for local demos, not hardened production deployments.
 
 ## Future Improvements
 
